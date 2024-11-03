@@ -1,4 +1,4 @@
-//business layer
+//Business layer
 const crypto = require('crypto')
 const persistence = require("./persistence")
 
