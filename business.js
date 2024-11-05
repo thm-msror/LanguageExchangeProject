@@ -26,7 +26,7 @@ async function registerUser(userData) {
     userData.passwordHash = hashPassword(userData.password) // Hash the password
 
     // Insert the new user into the database
-    await persistence.createUser(userData) // Ensure to await this operation
+    return await persistence.createUser(userData) // Ensure to await this operation
 }
 
 // User login
@@ -51,7 +51,7 @@ async function loginUser(username, password) {
     await persistence.saveSession({
         sessionToken: sessionKey,
         expiry: expiry,
-        userId: user._id //BUG : userId is not defined
+        username: user.username //BUG : userId is not defined
 
     })
 

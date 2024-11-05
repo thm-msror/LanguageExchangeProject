@@ -9,10 +9,10 @@
               <div class="card col-md-7 p-4 mb-0">
                 <div class="card-body">
                   <h1>Login</h1>
-                  <p class="text-medium-emphasis">Sign In to your account</p>
+                  <p class="text-medium-emphasis">Sign in to your account</p>
 
-                  {{#if error}}
-                    <div class="alert alert-danger">{{error}}</div>
+                  {{#if message}}
+                    <div class="alert alert-danger">{{message}}</div>
                   {{/if}}
 
                   <form action="/login" method="POST">
@@ -46,7 +46,7 @@
               <div class="card col-md-5 text-white bg-primary py-5">
                 <div class="card-body text-center">
                   <div>
-                    <h2>Sign up</h2>
+                    <h2>Sign Up</h2>
                     <p>Don't have an account? Register now!</p>
                     <a href='/register'><button class="btn btn-lg btn-outline-light mt-3" type="button">Register Now!</button></a>
                   </div>

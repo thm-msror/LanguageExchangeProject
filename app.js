@@ -21,7 +21,7 @@ app.use('/static', express.static(__dirname + "/static"))
 // Main landing page
 app.get('/', async (req, res) => {
     const sessionKey = req.cookies.sessionKey
-    let flashMessage = await flash.getFlash(sessionKey)
+    // let flashMessage = await flash.getFlash(sessionKey) Will use flash message when anonymous user is created
 
     if (sessionKey) {
         const session = await business.getUserSession(sessionKey)
@@ -31,7 +31,8 @@ app.get('/', async (req, res) => {
         }
     }
 
-    res.render('blank', { flashMessage })
+    res.render('login') // For now just redirecting to the login page if no active session.
+    return
 })
 
 // User page route (personalized view)
@@ -43,11 +44,10 @@ app.get('/user', async (req, res) => {
         const session = await business.getUserSession(sessionKey)
         console.log(session) 
         if (session) {
-            return res.render('user', { username: session.user.username, flashMessage }) //TypeError: Cannot read properties of undefined (reading 'username')
+            return res.render('user', { username: session.username, message: flashMessage }) //TypeError: Cannot read properties of undefined (reading 'username')
 
         }
     }
-
     // If no session, redirect to login
     res.redirect('/login')
 })
@@ -58,14 +58,20 @@ app.get('/register', (req, res) => {
 })
 
 app.post('/register', async (req, res) => {
-    const { username, password } = req.body
+    const username = req.body.username //Changed from req.body to 2 separate assignment statememts
+    const password  = req.body.password
+    const email = req.body.email
+    
+    // Verify email
 
     try {
-        const newUser = await business.registerUser({ username, password })
+        const newUser = await business.registerUser({email: email, username: username, password: password })
         await flash.setFlash(newUser._id, `Welcome, ${newUser.username}! Registration successful.`)
         res.redirect('/login')
+        return
     } catch (error) {
-        res.render('register', { error: error.message })
+        res.render('register', { message: `Registration unsuccessful. Please ensure all fields are correct` })
+        return
     }
 })
 
@@ -78,7 +84,8 @@ app.get('/login',  (req, res) => {
 
 // Handle user login
 app.post('/login', async (req, res) => {
-    const { username, password } = req.body
+    const username = req.body.username //Changed from req.query to 2 separate assignment statememts
+    const password  = req.body.password
 
     try {
         // Validate user credentials
@@ -90,8 +97,12 @@ app.post('/login', async (req, res) => {
 
         // Redirect to personalized user page
         res.redirect('/user')
+        return
     } catch (error) {
-        res.render('login', { error: error.message })
+        console.log(error)
+        res.render('login', {message: `Could not authenticate the user.`})
+        return
+
     }
 })
 

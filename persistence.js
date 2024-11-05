@@ -9,7 +9,7 @@ let sessions = undefined
 // Connect to the database
 async function connectDatabase() {
     if (!client) {
-        client = new mongodb.MongoClient('mongodb+srv://tehreemmasroor:12class34@cluster0.1ykuj3l.mongodb.net/')
+        client = new mongodb.MongoClient('mongodb+srv://60302181:12class34@cluster0.yrpo2.mongodb.net/')
         await client.connect()
         db = client.db('LanguageExchange')
         users = db.collection('UserAccounts')
@@ -20,13 +20,13 @@ async function connectDatabase() {
 // User Functions
 async function createUser(userData) {
     await connectDatabase()
-    const result = await users.insertOne(userData)
-    return result.insertedId // Return the ID of the newly created user
+    await users.insertOne(userData)
+    return await users.findOne({username: userData.username})// Return the ID of the newly created user
 }
 
-async function getUserDetails(username) {
+async function getUserDetails(user) {
     await connectDatabase()
-    const result = await users.findOne({ username }) //TypeError: Cannot read properties of undefined (reading 'findOne')
+    const result = await users.findOne({username: user }) //FIXED>>>TypeError: Cannot read properties of undefined (reading 'findOne')
     return result
 }
 
