@@ -1,28 +1,16 @@
-// flash module uses persistence layer functions
-const persistence = require('./persistence.js')
+// flash.js
+const flashMessages = {}
 
-// Function to set a flash message for a session
-async function setFlash(sessionKey, message) {
-    const sessionData = await persistence.getSessionData(sessionKey)
-    if (!sessionData) return
-    
-    sessionData.flash = message
-    await persistence.updateSessionData(sessionKey, sessionData) 
+// Set a flash message
+async function setFlash(key, message) {
+    flashMessages[key] = message
 }
 
-// Function to get and clear a flash message from a session
-async function getFlash(sessionKey) {
-    const sessionData = await persistence.getSessionData(sessionKey)
-    if (!sessionData) return undefined
-
-    const message = sessionData.flash
-    delete sessionData.flash
-    await persistence.updateSessionData(sessionKey, sessionData) 
-    
+// Get a flash message
+async function getFlash(key) {
+    const message = flashMessages[key]
+    delete flashMessages[key]  // Clear the message after it's been retrieved
     return message
 }
 
-module.exports = {
-    setFlash,
-    getFlash
-}
+module.exports = { setFlash, getFlash }
