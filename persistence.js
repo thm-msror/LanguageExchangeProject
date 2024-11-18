@@ -17,14 +17,13 @@ let sessions = undefined
  */
 async function connectDatabase() {
     if (!client) {
-        client = new mongodb.MongoClient('mongodb+srv://60302181:12class34@cluster0.yrpo2.mongodb.net/')
+        client = new mongodb.MongoClient('mongodb+srv://tehreemmasroor:12class34@cluster0.1ykuj3l.mongodb.net/')
         await client.connect()
         db = client.db('LanguageExchange')
         users = db.collection('UserAccounts')
         sessions = db.collection('SessionData')
     }
 }
-
 
 /**
  * Creates a new user and inserts it into the database with a verification token.
@@ -113,17 +112,16 @@ async function updateUserEmailVerified(username) {
 async function saveSession(sessionData) {
     await connectDatabase()
 
-    const key = sessionData.key
-    const expiry = sessionData.expiry
-    const data = sessionData.data
+    const { key, expiry, data, csrfToken } = sessionData
     const result = await sessions.insertOne({
-        key: key,
-        expiry: expiry,
-        sessionData: data
+        key,
+        expiry,
+        sessionData: data,
+        csrfToken: csrfToken
     })
+
     return result.insertedId // Return the ID of the newly created session
 }
-
 
 /**
  * Retrieves session data by session key.
@@ -134,11 +132,9 @@ async function saveSession(sessionData) {
  */
 async function getSession(key) {
     await connectDatabase()
-
     const result = await sessions.findOne({ key })
     return result
 }
-
 
 /**
  * Deletes a session by its session key.
@@ -154,25 +150,34 @@ async function deleteSession(key) {
     return result.deletedCount // Return number of deleted documents
 }
 
-
 /**
  * Updates a session's data by its session key.
  * 
  * @async
  * @param {string} sessionKey - The session key to update.
  * @param {Object} sessionData - The new session data.
- * @returns {Promise<void>} Resolves once the session is updated.
+ * @returns {Promise<number>} The number of documents modified (should be 1 if successful, 0 if no session matches).
+ * @throws {Error} If the session key or session data is invalid.
  */
 async function updateSession(sessionKey, sessionData) {
-    if (!sessionData) {
-        return
+    if (!sessionKey) {
+        throw new Error("Session key is required.")
     }
-    const result = await sessions.updateOne(
-        { key: sessionKey },
-        { $set: { sessionData: sessionData } }
-    )
-}
+    if (!sessionData || typeof sessionData !== "object") {
+        throw new Error("Valid session data is required.")
+    }
 
+    const result = await sessions.updateOne(
+        { key: sessionKey }, // Match the session by its key
+        { $set: { sessionData: sessionData } } // Update the session data
+    )
+
+    if (result.matchedCount === 0) {
+        throw new Error("No session found for the provided session key.")
+    }
+
+    return result.modifiedCount // Returns 1 if successfully updated, 0 otherwise
+}
 
 /**
  * Retrieves a user by their email address.
@@ -186,36 +191,46 @@ async function getUserByEmail(email) {
     return await users.findOne({ email: email })
 }
 
-
+//Changes made to setResetKey and getUserByResetKey to ensure time-bound reset key.
 /**
- * Sets the password reset key for a user.
+ * Sets the password reset key and expiration time for a user.
  * 
  * @async
  * @param {string} username - The username of the user.
  * @param {string} resetKey - The password reset key.
- * @returns {Promise<void>} Resolves once the reset key is set.
+ * @param {Date} expiry - The expiration time for the reset key.
+ * @returns {Promise<void>} Resolves once the reset key and expiry are set.
  */
-async function setResetKey(username, resetKey) {
+async function setResetKey(username, resetkey, expiry = new Date(Date.now() + 1 * 60 * 60 * 1000)) { // 1-hour expiry
     await connectDatabase()
-    await users.updateOne({ username: username }, { $set: { resetkey: resetKey } })
+    await users.updateOne({ username: username }, { $set: { resetkey: resetkey, resetKeyExpiry: expiry } })
 }
 
 
 /**
- * Retrieves a user by their password reset key.
+ * Retrieves a user by their password reset key, if the key has not expired.
  * 
  * @async
  * @param {string} resetKey - The password reset key.
- * @returns {Promise<Object|null>} The user document if found, otherwise null.
+ * @returns {Promise<Object|null>} The user document if found and the key is valid, otherwise null.
  */
 async function getUserByResetKey(resetKey) {
     await connectDatabase()
-    return await users.findOne({ resetkey: resetKey })
+
+    const user = await users.findOne({ resetkey: resetKey })
+
+    if (!user) {
+        return null // No matching user
+    }
+
+    if (user && user.resetKeyExpiry > new Date()) {
+        return user
+    }
+    return null
 }
 
-
 /**
- * Updates a user's password with a new hashed password.
+ * Updates a user's password with a new hashed password and clears the reset key and its expiry.
  * 
  * @async
  * @param {string} username - The username of the user.
@@ -224,7 +239,57 @@ async function getUserByResetKey(resetKey) {
  */
 async function updatePassword(username, hashedPassword) {
     await connectDatabase()
-    await users.updateOne({ username: username }, { $set: { passwordHash: hashedPassword, resetkey: null } })
+    await users.updateOne({ username: username }, { $set: { passwordHash: hashedPassword, resetkey: null, resetKeyExpiry: null} })
+}
+
+
+/**
+ * Saves the user's profile during the initial setup.
+ *
+ * @param {string} userId - The user's ID.
+ * @param {Object} profileData - The profile data to save.
+ * @returns {Promise<void>}
+ */
+async function saveUserProfile(userId, profileData) {
+    await connectDatabase()
+
+    const update = {
+        $set: {
+            description: profileData.description,
+            fluentLang: profileData.fluentLang,
+            learnLang: profileData.learnLang,
+            profilePhotoPath: profileData.profilePhotoPath,
+        },
+    }
+
+    const result = await users.updateOne({ _id: new mongodb.ObjectId(userId) }, update)
+
+    if (result.matchedCount === 0) {
+        throw new Error("User not found.")
+    }
+}
+
+
+/**
+ * Fetches the user's profile from the database.
+ *
+ * @param {string} userId - The user's ID.
+ * @returns {Promise<Object>} The user's profile.
+ */
+async function getUserProfile(userId) {
+    await connectDatabase()
+
+    const user = await users.findOne({ _id: new mongodb.ObjectId(userId) })
+    if (!user) {
+        throw new Error("User not found.")
+    }
+
+    return {
+        description: user.description || null,
+        fluentLang: user.fluentLang || [],
+        learnLang: user.learnLang || [],
+        profilePhotoPath: user.profilePhotoPath || '/static/assets/img/avatars/default.png',
+    }
 }
 
 
@@ -242,5 +307,7 @@ module.exports = {
     getUserByEmail,
     setResetKey,
     getUserByResetKey,
-    updatePassword
+    updatePassword,
+    saveUserProfile,
+    getUserProfile
 }

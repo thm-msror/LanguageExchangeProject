@@ -4,6 +4,8 @@ const business = require('./business.js')
 const bodyParser = require('body-parser')
 const cookieParser = require('cookie-parser')
 const handlebars = require('express-handlebars')
+const flash = require('./flash.js')
+const fileUpload = require('express-fileupload')
 
 let app = express()
 
@@ -16,7 +18,6 @@ app.engine('handlebars', handlebars.engine())
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(cookieParser())
 app.use('/static', express.static(__dirname + "/static"))
-
 
 /**
  * Checks if a session is expired based on the session key.
@@ -77,41 +78,111 @@ app.get('/', async (req, res) => {
     res.render('login', { message: message })
 })
 
+app.get('/404', async (req, res) => {
+    res.render('404')
+})
 
-/**
- * Route handler for user page, validates session and renders user view if session is active.
- *
- * @async
- * @param {Object} req - The request object, containing session cookies.
- * @param {Object} res - The response object to render the user page or redirect.
- * @returns {Promise<void>} Renders the user page with username if session is active, otherwise redirects to login.
- * @middleware {Function} sessionExpirationMiddleware - Middleware to check session expiration before accessing user page.
- */
+app.get('/500', async (req, res) => {
+    res.render('500')
+})
+
+// Route to display user profile
 app.get('/user', sessionExpirationMiddleware, async (req, res) => {
-    const sessionKey = req.cookies.sessionKey
-    const session = await business.getSession(sessionKey)
-    if (session && session.sessionData && session.sessionData.username) {
-        return res.render('user', { username: session.sessionData.username })
+    try {
+        const sessionKey = req.cookies.sessionKey
+        const session = await business.getSession(sessionKey)
+
+        // Check if session is valid
+        if (!session || !session.sessionData || !session.sessionData.userId) {
+            return res.redirect('/login')
+        }
+
+        const userId = session.sessionData.userId
+        const username = session.sessionData.username
+       
+        // Fetch user profile
+        const profile = await business.getUserProfile(userId)
+
+        // Pass user details and CSRF token to the template
+        res.render('user', {
+            username,
+            csrfToken: session.csrfToken, // Use the CSRF token from session
+            description: profile.description,
+            fluentLang: profile.fluentLang,
+            learnLang: profile.learnLang,
+            profilePhotoPath: profile.profilePhotoPath || '/static/assets/img/avatars/default.png',
+        })
+    } catch (error) {
+        console.error('Error loading user profile:', error)
+        res.status(500).render('error', { message: 'Failed to load profile. Please try again later.' })
     }
-    res.redirect('/login')
+})
+
+app.post('/user', sessionExpirationMiddleware, fileUpload(), async (req, res) => {
+    try {
+        const sessionKey = req.cookies.sessionKey
+        const session = await business.getSession(sessionKey)
+
+        if (!session || !session.sessionData || !session.sessionData.userId) {
+            return res.redirect('/login')
+        }
+
+        const userId = session.sessionData.userId
+        const csrfToken = req.body.csrfToken
+
+        // Validate CSRF token
+        const isValidToken = await business.validateToken(sessionKey, csrfToken)
+        if (!isValidToken) {
+            return res.status(403).send("Invalid CSRF token")
+        }
+
+        // Normalize form data
+        const description = req.body.description || null
+
+        let fluentLang = []
+        if (Array.isArray(req.body['fluentLang[]'])) {
+            fluentLang = req.body['fluentLang[]']
+        } else if (req.body['fluentLang[]']) {
+            fluentLang = [req.body['fluentLang[]']]
+        }
+
+        let learnLang = []
+        if (Array.isArray(req.body['learnLang[]'])) {
+            learnLang = req.body['learnLang[]']
+        } else if (req.body['learnLang[]']) {
+            learnLang = [req.body['learnLang[]']]
+        }
+
+        let profilePhotoPath = null
+        if (req.files?.profilePhoto) {
+            const photo = req.files.profilePhoto
+            const uploadPath = __dirname + '/static/assets/img/avatars/' + Date.now() + '-' + photo.name
+            profilePhotoPath = '/static/assets/img/avatars/' + Date.now() + '-' + photo.name
+        
+            await photo.mv(uploadPath) // Move the uploaded file
+        }
+
+        // Save profile through the business layer
+        await business.saveUserProfile(userId, {
+            description,
+            fluentLang,
+            learnLang,
+            profilePhotoPath,
+        })
+
+        // Redirect to GET /user to display the updated profile
+        res.redirect('/user')
+    } catch (error) {
+        console.error("Error updating profile:", error)
+        res.status(500).send("Failed to save profile.")
+    }
 })
 
 
-/**
- * Route handler for index page, renders the dashboard page.
- *
- * @async
- * @param {Object} req - The request object.
- * @param {Object} res - The response object to render the index page.
- * @returns {Promise<void>} Renders the index page.
- * @middleware {Function} sessionExpirationMiddleware - Middleware to check session expiration before accessing index page.
- */
-app.get('/index', sessionExpirationMiddleware, (req, res) => {
-    res.render('index')
-})
+
 
 /**
- * Route handler for rednering the registration page.
+ * Route handler for rendering the registration page.
  *
  * @async
  * @param {Object} req - The request object.
@@ -130,7 +201,7 @@ app.get('/register', async (req, res) => {
  * @async
  * @param {Object} req - The request object containing user registration details (username, password, repeatPassword, email).
  * @param {Object} res - The response object to redirect or render the registration view with error.
- * @returns {Promise<void>} Redirects to login page after successful registration; otherwise, renders registration page with an error message.
+ * @returns {Promise<void>} Redirects to login page after successful registration otherwise, renders registration page with an error message.
  */
 app.post('/register', async (req, res) => {
     const username = req.body.username
@@ -140,8 +211,7 @@ app.post('/register', async (req, res) => {
 
     try {
         await business.registerUser(username, email, password, repeatPassword)
-        res.redirect('/login')  // Redirect to login page after successful registration
-
+        res.render('login', { success: "Registration sucessful, A verification email has been sent to your email address. Please verify your email!" })  // Redirect to login page after successful registration
     } catch (error) {
         // Pass an error message to the template if registration fails
         res.render('register', { error: error.message })
@@ -155,7 +225,7 @@ app.post('/register', async (req, res) => {
  * @async
  * @param {Object} req - The request object, which may contain an active session key in cookies.
  * @param {Object} res - The response object to render the login view or redirect to the user page.
- * @returns {Promise<void>} Redirects to the user page if the session is active; otherwise, renders the login page with optional error message.
+ * @returns {Promise<void>} Redirects to the user page if the session is active otherwise, renders the login page with optional error message.
  */
 app.get('/login', async (req, res) => {
     try {
@@ -165,7 +235,6 @@ app.get('/login', async (req, res) => {
         if (sessionKey && !(await isSessionExpired(sessionKey))) {
             return res.redirect('/user')
         }
-
         // Render the login page
         res.render('login')
 
@@ -183,7 +252,7 @@ app.get('/login', async (req, res) => {
  * @async
  * @param {Object} req - The request object containing the username and password in the body.
  * @param {Object} res - The response object to set the session cookie and render views.
- * @returns {Promise<void>} Sets a session cookie and redirects to user page if login is successful; otherwise, renders login with an error message.
+ * @returns {Promise<void>} Sets a session cookie and redirects to user page if login is successful otherwise, renders login with an error message.
  */
 app.post('/login', async (req, res) => {
     const username = req.body.username
@@ -194,7 +263,7 @@ app.post('/login', async (req, res) => {
         res.cookie('sessionKey', sessionKey, { httpOnly: true })
         res.redirect('/user')
     } catch (error) {
-        res.render('login', { message: error.message })
+        res.render('login', { error: error.message })
     }
 })
 
@@ -217,7 +286,7 @@ app.get('/logout', async (req, res) => {
     }
 
     // Redirect to the login page
-    res.redirect('/?message=Logged Out.')
+    res.render('login', { success: "You have been logged out." })
 })
 
 
@@ -233,7 +302,7 @@ app.get('/verify-email', async (req, res) => {
     const token = req.query.token
 
     if (!token) {
-        return res.status(400).send('<h1>Verification token is missing.</h1>')
+        return res.render('404', { error: "Invalid verification token!" })
     }
 
     try {
@@ -242,12 +311,12 @@ app.get('/verify-email', async (req, res) => {
         if (user) {
             // Mark the user's email as verified
             await business.updateUserEmailVerified(user.username)
-            return res.send('<h1>Email verified successfully.</h1>')
+            return res.send('<h2>Email verified successfully. You can close this page now.</h2>')
         } else {
-            return res.status(400).send('<h1>Invalid verification token.</h1>')
+            return res.render('404', { error: "Invalid verification token! You can try again!" })
         }
     } catch (error) {
-        return res.status(500).send('<h1>Internal server error.</h1>')
+        return res.render('500', { error: "Internal Server error! Please try again!" })
     }
 })
 
@@ -278,12 +347,13 @@ app.post('/forgot-password', async (req, res) => {
     verified = await business.initiatePasswordReset(email)
 
     if (!verified) {
-        res.send(`This email address does not exist or has not been verified.`)
-        return
+        return res.render('forgot-password', {
+            error: "This email address does not exist or has not been verified."
+        })
     }
 
     // Notify the user to check their email for a reset link
-    res.send(`A reset link will be sent shortly...`)
+    return res.render('forgot-password', { success: "A reset link will be sent shortly...Close this window!" })
 })
 
 /**
@@ -300,7 +370,9 @@ app.get('/reset-password/:resetKey', async (req, res) => {
     const valid = await business.verifyResetKey(resetKey)
 
     if (!valid) {
-        return res.send("Invalid or expired reset link.")
+        return res.render('forgot-password', {
+            error: "Invalid or expired reset link. Please try again."
+        })
     }
 
     // Proceed with rendering the reset page
@@ -320,16 +392,118 @@ app.get('/reset-password/:resetKey', async (req, res) => {
  * @returns {void} Redirects on success or sends an error message.
  */
 app.post('/reset-password', async (req, res) => {
-    const { resetKey, password, confirmPassword } = req.body
-    const success = await business.resetPassword(resetKey, password, confirmPassword)
+    const resetKey = req.body.resetKey
+    const password = req.body.password
+    const confirmPassword = req.body.confirmPassword
+    // Check if the passwords match
+    if (password !== confirmPassword) {
+        return res.render('reset-password', {
+            resetKey,
+            error: "Passwords do not match. Please try again."
+        })
+    }
 
-    // Debugging: Check if success is false and log the reason
+    const valid = await business.verifyResetKey(resetKey)
+    if (!valid) {
+        return res.render('forgot-password', {
+            error: "Invalid or expired reset link. Please try again."
+        })
+    }
+
+    // Call the business logic to reset the password
+    let success = await business.resetPassword(resetKey, password)
     if (success) {
-        res.redirect('/?message=Password changed. Please log in.')
-    } else {
-        res.send("Invalid or expired reset link.")
+        // Redirect to login page after successful password reset
+        return res.render('login', { success: "Password reset successfully. Please login." })
+    }
+    else {
+        // Password reset failed since the user entered the same password as the old one
+        return res.render('reset-password', {
+            resetKey,
+            error: "New password cannot be the same as the current password. Please try again!"
+        })
+    }
+
+})
+
+app.use(fileUpload({
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB file size limit
+    useTempFiles: true,
+    tempFileDir: '/tmp/',
+}))
+
+// Profile route to render the profile setup form
+app.get('/profile', async (req, res) => {
+    const sessionKey = req.cookies.sessionKey
+
+    // Get session data
+    const session = await business.getSession(sessionKey)
+    if (!session || !session.sessionData || !session.sessionData.userId) {
+        return res.redirect('/login') // Redirect to login if session is invalid
+    }
+
+    // Generate a CSRF token
+    const csrfToken = await business.generateToken(sessionKey)
+
+    const message = await flash.getFlash(sessionKey)
+
+    res.render('profile', {
+        username: session.sessionData.username, // Username from session
+        csrfToken, // Include the CSRF token
+        success: message ? message.success : undefined,
+        error: message ? message.error : undefined,
+    })
+})
+
+// Profile route to handle form submission
+app.post('/profile', async (req, res) => {
+    try {
+        const sessionKey = req.cookies.sessionKey
+
+        // Get session data
+        const session = await business.getSession(sessionKey)
+        if (!session || !session.sessionData || !session.sessionData.userId) {
+            return res.redirect('/login') // Redirect to login if session is invalid
+        }
+
+        const userId = session.sessionData.userId // Get userId from session
+
+        const description = req.body.description || "" // Default to empty string if undefined
+        const wordCount = description.split(/\s+/).filter(word => word.length > 0).length
+
+        if (wordCount > 200) {
+            await flash.setFlash(sessionKey, { error: "Description cannot exceed 200 words." })
+            return res.redirect('/profile')
+        }
+
+        // Other validations for languages or file upload
+        const fluentLang = req.body['fluentLang[]']
+        const learnLang = req.body['learnLang[]']
+        if (!fluentLang || fluentLang.length < 1 || fluentLang.length > 5) {
+            await flash.setFlash(sessionKey, { error: "Select 1 to 5 fluent languages." })
+            return res.redirect('/profile')
+        }
+        if (!learnLang || learnLang.length < 1 || learnLang.length > 5) {
+            await flash.setFlash(sessionKey, { error: "Select 1 to 5 desired languages." })
+            return res.redirect('/profile')
+        }
+
+        // If everything is valid, process the profile update
+        await business.updateUserProfile(userId, {
+            description,
+            fluentLang,
+            learnLang,
+        })
+
+        // Set success message and redirect
+        await flash.setFlash(sessionKey, { success: "Profile updated successfully!" })
+        res.redirect('/profile')
+    } catch (error) {
+        console.error(error)
+        res.render('user', { error: "An error occurred. Please try again." })
     }
 })
+
 
 /**
  * Starts the Express server and listens for incoming connections.

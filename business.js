@@ -1,6 +1,7 @@
 //business layer
 const crypto = require('crypto')
 const persistence = require("./persistence")
+const mongodb = require('mongodb')
 
 
 /**
@@ -9,11 +10,11 @@ const persistence = require("./persistence")
  * Generates a new salt if none is provided and returns the salt and hashed password in "salt:hash" format.
  * 
  * @param {string} password - The password to hash.
- * @param {string|null} [salt=null] - The optional salt; generates a new one if null.
+ * @param {string|null} [salt=null] - The optional salt generates a new one if null.
  * @returns {string} A string in "salt:hash" format.
  */
 function hashPassword(password, salt = null) {
-    // Generate a new salt if one isn't provided (for registration)
+    // Generate a new salt if one isn't provided (for new password registration)
     if (!salt) {
         salt = crypto.randomBytes(4).toString('hex')
     }
@@ -23,6 +24,7 @@ function hashPassword(password, salt = null) {
     const hashedPassword = hash.digest('hex')
     return `${salt}:${hashedPassword}` // Return salt and hash in "salt:hash" format
 }
+
 
 
 /**
@@ -37,7 +39,6 @@ function generateSessionKey() {
 
 /**
  * Logs in a user by verifying credentials and creating a session.
- * Checks the username, email verification, and password. If valid, a session key is created and stored.
  * 
  * @async
  * @param {string} username - The username of the user trying to log in.
@@ -52,37 +53,38 @@ async function loginUser(username, password) {
             throw new Error('User not found')
         }
 
-        if (user.emailVerified === false) {
-            throw new Error("Email not verified")
+        if (!user.emailVerified) {
+            throw new Error('Email not verified')
         }
 
         // Extract the salt and hash from the stored password hash
         const [storedSalt, storedHash] = user.passwordHash.split(':')
         // Hash the entered password with the stored salt
-        const hashedPassword = hashPassword(password, storedSalt).split(':')[1] // Only get the hash part
+        const hashedPassword = hashPassword(password, storedSalt).split(':')[1]
         if (hashedPassword !== storedHash) {
             throw new Error('Invalid password')
         }
 
-        // Create a new session
+        // Create or start a new session
         const sessionKey = generateSessionKey()
-        const expiry = new Date(Date.now() + 10 * 60 * 1000) // 10 minute expiry for testing
+        const csrfToken = crypto.randomBytes(32).toString('hex') // Generate CSRF token
+        const expiry = new Date(Date.now() + 10 * 60 * 1000) // 10-minute expiry
 
         await persistence.saveSession({
             key: sessionKey,
-            expiry: expiry,
+            expiry,
             data: {
+                userId: user._id.toString(), // Store the ObjectId as a string
                 username: user.username,
-            }
+            },
+            csrfToken: csrfToken,
         })
 
-        return { sessionKey, user }
-
+        return { sessionKey, user}
     } catch (error) {
         throw error
     }
 }
-
 
 /**
  * Retrieves the session data for a given session key.
@@ -92,8 +94,13 @@ async function loginUser(username, password) {
  * @returns {Promise<Object>} The session data.
  */
 async function getSession(sessionKey) {
-    return await persistence.getSession(sessionKey)
+    const session = await persistence.getSession(sessionKey)
+    if (session && session.sessionData && session.sessionData.userId) {
+        session.sessionData.userId = new mongodb.ObjectId(session.sessionData.userId) // Convert back to ObjectId
+    }
+    return session
 }
+
 
 
 /**
@@ -169,6 +176,7 @@ async function registerUser(username, email, password, repeatPassword) {
         })
 
         await logVerificationEmail(email, verificationToken)
+        
 
         return await persistence.getUserDetails(username)
     } catch (error) {
@@ -255,15 +263,18 @@ async function initiatePasswordReset(email) {
  */
 async function verifyResetKey(resetKey) {
     const user = await persistence.getUserByResetKey(resetKey)
+
     if (user) {
-        return true // Valid reset key    
+        return true // Valid reset key
     }
 
-    return false // Invalid or expired key
+    return false // Invalid or expired reset key
 }
+
 
 /**
  * Resets the user's password using the provided reset key and new passwords.
+ * Ensures the new password is not the same as the current password.
  * 
  * @async
  * @param {string} resetKey - The reset key to verify.
@@ -271,19 +282,128 @@ async function verifyResetKey(resetKey) {
  * @param {string} confirmPassword - The password confirmation.
  * @returns {Promise<boolean>} `true` if the password was reset successfully, otherwise `false`.
  */
-async function resetPassword(resetKey, password, confirmPassword) {
+async function resetPassword(resetKey, password) {
     const user = await persistence.getUserByResetKey(resetKey)
-    const passwordMatch = await validatePassword(password, confirmPassword)
 
-    if (!user || !passwordMatch) {
-        return false
+    if (!user) {
+        console.log("Reset key is invalid or expired:", resetKey)
+        return false // Invalid reset key
     }
 
-    const hashedPassword = hashPassword(password)
-    await persistence.updatePassword(user.username, hashedPassword)
+    // Retrieve the stored password and salt from the database
+    const [storedSalt, storedHashedPassword] = user.passwordHash.split(":")
+
+    // Hash the new password using the stored salt
+    const hashedPassword = hashPassword(password, storedSalt).split(":")[1] // Only get the hashed part
+
+    // Check if the new hashed password is the same as the stored hashed password
+    if (hashedPassword === storedHashedPassword) {
+        return false // Prevent using the same password
+    }
+
+    // Update the password in the database with the new hash
+    const newHash = hashPassword(password) // This will generate a new salt and hash
+    await persistence.updatePassword(user.username, newHash)
+
+    // Clear the reset key only after a successful password update
     await persistence.setResetKey(user.username, null)
 
-    return true
+    return true // Password reset successful
+}
+
+/**
+ * Saves the user's profile during the initial setup.
+ *
+ * @param {string} userId - The user's ID.
+ * @param {Object} profileData - The profile data to save.
+ * @returns {Promise<void>}
+ */
+async function saveUserProfile(userId, profileData) {
+    if (!userId) {
+        throw new Error("User ID is required.")
+    }
+
+    // Ensure valid data
+    const validatedProfileData = {
+        description: profileData.description || null,
+        fluentLang: Array.isArray(profileData.fluentLang) ? profileData.fluentLang : [],
+        learnLang: Array.isArray(profileData.learnLang) ? profileData.learnLang : [],
+        profilePhotoPath: profileData.profilePhotoPath || '/static/assets/img/avatars/default.png',
+    }
+
+    // Pass the validated data to the persistence layer
+    await persistence.saveUserProfile(userId, validatedProfileData)
+}
+
+
+/**
+ * Fetches the user profile.
+ *
+ * @param {string} userId - The user's ID.
+ * @returns {Promise<Object>} The user's profile.
+ */
+async function getUserProfile(userId) {
+    if (!userId) {
+        throw new Error("User ID is required.")
+    }
+    return await persistence.getUserProfile(userId)
+}
+
+
+/**
+ * Regenerate the CSRF token after every successful request
+ *
+ * @param {string} sessionKey - The session key.
+ * @returns {Promise<string>} The generated token.
+ */
+async function renewToken(sessionKey) {
+    // Generate a secure random token (32 bytes = 64 hex characters)
+    const newToken = crypto.randomBytes(32).toString('hex')
+    await persistence.updateSession(sessionKey, { csrfToken: newToken })
+    return newToken
+}
+
+/**
+ * Retrieves the CSRF token for a given session key.
+ *
+ * @async
+ * @param {string} key - The session key to retrieve the CSRF token for.
+ * @returns {Promise<string>} The CSRF token stored in the session.
+ */
+async function getToken(key) {
+    let sd = await persistence.getSession(key)
+    if (sd) {
+        sd.csrfToken = token
+    } else {
+        console.error("sd is null or undefined")
+    }    
+}
+
+/**
+ * Validates a CSRF token.
+ *
+ * @param {string} sessionKey - The session key.
+ * @param {string} csrfToken - The CSRF token.
+ * @returns {Promise<boolean>} True if the token is valid, false otherwise.
+ */
+async function validateToken(sessionKey, csrfToken) {
+    const session = await persistence.getSession(sessionKey)
+    return session && session.csrfToken === csrfToken
+}
+
+/**
+ * Cancels the CSRF token for a given session by removing it.
+ *
+ * @async
+ * @param {string} key - The session key to cancel the CSRF token for.
+ * @returns {Promise<void>} Resolves after the CSRF token is removed.
+ */
+async function cancelToken(key) {
+    let sd = await persistence.getSession(key)
+    if (sd) {
+        delete sd.csrfToken // Remove the CSRF token
+        await persistence.updateSession(key, sd)
+    }
 }
 
 module.exports = {
@@ -296,5 +416,11 @@ module.exports = {
     initiatePasswordReset,
     verifyResetKey,
     resetPassword,
-    logoutUser
+    logoutUser,
+    getUserProfile,
+    saveUserProfile,
+    renewToken,
+    getToken,
+    validateToken,
+    cancelToken
 }

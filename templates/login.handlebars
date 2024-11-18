@@ -12,10 +12,17 @@
                 <h1>Login</h1>
                 <p class="text-medium-emphasis">Sign in to your account</p>
 
-                {{#if message}}
-                <div class="alert alert-danger">{{message}}</div>
+                
+
+                <!-- Display error or success message -->
+                {{#if error}}
+                <div class="alert alert-danger">{{error}}</div>
+                {{/if}}
+                {{#if success}}
+                <div class="alert alert-success">{{success}}</div>
                 {{/if}}
 
+                
                 <form action="/login" method="POST">
                   <div class="input-group mb-3">
                     <span class="input-group-text">
@@ -38,7 +45,8 @@
                       <button class="btn btn-primary px-4" type="submit">Login</button>
                     </div>
                     <div class="col-6 text-end">
-                      <a href="/forgot-password"><button class="btn btn-link px-0" type="button">Forgot password?</button></a>
+                      <a href="/forgot-password"><button class="btn btn-link px-0" type="button">Forgot
+                          password?</button></a>
                     </div>
                   </div>
                 </form>
