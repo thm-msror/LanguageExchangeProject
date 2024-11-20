@@ -51,7 +51,7 @@ async function sessionExpirationMiddleware(req, res, next) {
     const sessionKey = req.cookies.sessionKey
     if (!sessionKey || await isSessionExpired(sessionKey)) {
         res.clearCookie('sessionKey') // Clear expired session cookie
-        return res.redirect('/login') // Redirect to login page if session is expired
+        return res.render('login', {error: "Your session expired."}) // Redirect to login page if session is expired
     }
     next()
 }
@@ -92,14 +92,11 @@ app.get('/user', sessionExpirationMiddleware, async (req, res) => {
         const sessionKey = req.cookies.sessionKey
         const session = await business.getSession(sessionKey)
 
-        // Check if session is valid
-        if (!session || !session.sessionData || !session.sessionData.userId) {
-            return res.redirect('/login')
-        }
+        // sessionExpirationMiddleware checks if the session is valid and redirects to login if not
 
         const userId = session.sessionData.userId
         const username = session.sessionData.username
-       
+
         // Fetch user profile
         const profile = await business.getUserProfile(userId)
 
@@ -114,7 +111,7 @@ app.get('/user', sessionExpirationMiddleware, async (req, res) => {
         })
     } catch (error) {
         console.error('Error loading user profile:', error)
-        res.status(500).render('error', { message: 'Failed to load profile. Please try again later.' })
+        res.status(500).render('500', { error: 'Failed to load profile. Please try again later.' })
     }
 })
 
@@ -123,9 +120,7 @@ app.post('/user', sessionExpirationMiddleware, fileUpload(), async (req, res) =>
         const sessionKey = req.cookies.sessionKey
         const session = await business.getSession(sessionKey)
 
-        if (!session || !session.sessionData || !session.sessionData.userId) {
-            return res.redirect('/login')
-        }
+        // sessionExpirationMiddleware checks if the session is valid and redirects to login if not
 
         const userId = session.sessionData.userId
         const csrfToken = req.body.csrfToken
@@ -133,7 +128,7 @@ app.post('/user', sessionExpirationMiddleware, fileUpload(), async (req, res) =>
         // Validate CSRF token
         const isValidToken = await business.validateToken(sessionKey, csrfToken)
         if (!isValidToken) {
-            return res.status(403).send("Invalid CSRF token")
+            return res.status(403).render('404', { error: 'Invalid CSRF token.' })
         }
 
         // Normalize form data
@@ -158,7 +153,7 @@ app.post('/user', sessionExpirationMiddleware, fileUpload(), async (req, res) =>
             const photo = req.files.profilePhoto
             const uploadPath = __dirname + '/static/assets/img/avatars/' + Date.now() + '-' + photo.name
             profilePhotoPath = '/static/assets/img/avatars/' + Date.now() + '-' + photo.name
-        
+
             await photo.mv(uploadPath) // Move the uploaded file
         }
 
@@ -172,13 +167,14 @@ app.post('/user', sessionExpirationMiddleware, fileUpload(), async (req, res) =>
 
         // Redirect to GET /user to display the updated profile
         res.redirect('/user')
+
+        await business.cancelToken(sessionKey) // Cancel the CSRF token after use
+
     } catch (error) {
         console.error("Error updating profile:", error)
-        res.status(500).send("Failed to save profile.")
+        res.status(500).render('500', { error: 'Failed to update profile. Please try again later.' })
     }
 })
-
-
 
 
 /**
@@ -188,7 +184,6 @@ app.post('/user', sessionExpirationMiddleware, fileUpload(), async (req, res) =>
  * @param {Object} req - The request object.
  * @param {Object} res - The response object to render the registration page.
  * @returns {Promise<void>} Renders the registration page.
- * @middleware {Function} sessionExpirationMiddleware - Middleware to check session expiration before accessing registration page.
  */
 app.get('/register', async (req, res) => {
     res.render('register')
@@ -231,7 +226,7 @@ app.get('/login', async (req, res) => {
     try {
         const sessionKey = req.cookies.sessionKey
 
-        // Check if there's an active session
+        // Check if there's an active session, checked specifically for the login page to redirect to user page if logged in
         if (sessionKey && !(await isSessionExpired(sessionKey))) {
             return res.redirect('/user')
         }
@@ -281,6 +276,7 @@ app.get('/logout', async (req, res) => {
     if (sessionKey) {
         // Call the business layer to delete the session from the database
         await business.logoutUser(sessionKey)
+
         // Clear the session cookie from the client
         res.clearCookie('sessionKey')
     }
@@ -426,84 +422,42 @@ app.post('/reset-password', async (req, res) => {
 
 })
 
-app.use(fileUpload({
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB file size limit
-    useTempFiles: true,
-    tempFileDir: '/tmp/',
-}))
-
-// Profile route to render the profile setup form
-app.get('/profile', async (req, res) => {
+// Route to render the contact page
+app.get('/contact', sessionExpirationMiddleware, async (req, res) => {
     const sessionKey = req.cookies.sessionKey
-
-    // Get session data
     const session = await business.getSession(sessionKey)
-    if (!session || !session.sessionData || !session.sessionData.userId) {
-        return res.redirect('/login') // Redirect to login if session is invalid
-    }
 
-    // Generate a CSRF token
-    const csrfToken = await business.generateToken(sessionKey)
+    // You can assume the session is valid here due to the sessionExpirationMiddleware
 
-    const message = await flash.getFlash(sessionKey)
+    const userId = session.sessionData.userId
+    const profile = await business.getUserProfile(userId)
 
-    res.render('profile', {
-        username: session.sessionData.username, // Username from session
-        csrfToken, // Include the CSRF token
-        success: message ? message.success : undefined,
-        error: message ? message.error : undefined,
-    })
+    res.render('contact', { profilePhotoPath: profile.profilePhotoPath || '/static/assets/img/avatars/default.png' })
 })
 
-// Profile route to handle form submission
-app.post('/profile', async (req, res) => {
-    try {
-        const sessionKey = req.cookies.sessionKey
+// Route to render the message page
+app.get('/message', sessionExpirationMiddleware, async (req, res) => {
+    const sessionKey = req.cookies.sessionKey
+    const session = await business.getSession(sessionKey)
 
-        // Get session data
-        const session = await business.getSession(sessionKey)
-        if (!session || !session.sessionData || !session.sessionData.userId) {
-            return res.redirect('/login') // Redirect to login if session is invalid
-        }
+    // You can assume the session is valid here due to the sessionExpirationMiddleware
 
-        const userId = session.sessionData.userId // Get userId from session
-
-        const description = req.body.description || "" // Default to empty string if undefined
-        const wordCount = description.split(/\s+/).filter(word => word.length > 0).length
-
-        if (wordCount > 200) {
-            await flash.setFlash(sessionKey, { error: "Description cannot exceed 200 words." })
-            return res.redirect('/profile')
-        }
-
-        // Other validations for languages or file upload
-        const fluentLang = req.body['fluentLang[]']
-        const learnLang = req.body['learnLang[]']
-        if (!fluentLang || fluentLang.length < 1 || fluentLang.length > 5) {
-            await flash.setFlash(sessionKey, { error: "Select 1 to 5 fluent languages." })
-            return res.redirect('/profile')
-        }
-        if (!learnLang || learnLang.length < 1 || learnLang.length > 5) {
-            await flash.setFlash(sessionKey, { error: "Select 1 to 5 desired languages." })
-            return res.redirect('/profile')
-        }
-
-        // If everything is valid, process the profile update
-        await business.updateUserProfile(userId, {
-            description,
-            fluentLang,
-            learnLang,
-        })
-
-        // Set success message and redirect
-        await flash.setFlash(sessionKey, { success: "Profile updated successfully!" })
-        res.redirect('/profile')
-    } catch (error) {
-        console.error(error)
-        res.render('user', { error: "An error occurred. Please try again." })
-    }
+    const userId = session.sessionData.userId
+    const profile = await business.getUserProfile(userId)
+    res.render('message', { profilePhotoPath: profile.profilePhotoPath || '/static/assets/img/avatars/default.png' })
 })
 
+// Route to render the badge page
+app.get('/badge', sessionExpirationMiddleware, async (req, res) => {
+    const sessionKey = req.cookies.sessionKey
+    const session = await business.getSession(sessionKey)
+
+    // You can assume the session is valid here due to the sessionExpirationMiddleware
+
+    const userId = session.sessionData.userId
+    const profile = await business.getUserProfile(userId)
+    res.render('badge', { profilePhotoPath: profile.profilePhotoPath || '/static/assets/img/avatars/default.png' })
+})
 
 /**
  * Starts the Express server and listens for incoming connections.

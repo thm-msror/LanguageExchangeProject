@@ -349,7 +349,6 @@ async function getUserProfile(userId) {
     return await persistence.getUserProfile(userId)
 }
 
-
 /**
  * Regenerate the CSRF token after every successful request
  *
@@ -422,5 +421,5 @@ module.exports = {
     renewToken,
     getToken,
     validateToken,
-    cancelToken
+    cancelToken,
 }

@@ -11,17 +11,38 @@
     <div class="sidebar sidebar-dark sidebar-fixed" id="sidebar">
         <div class="sidebar-brand d-none d-md-flex">
             <svg class="sidebar-brand-full" width="118" height="46" alt="CoreUI Logo">
-                <use xlink:href="static/assets/brand/coreui.svg#full"></use>
-            </svg>
-            <svg class="sidebar-brand-narrow" width="46" height="46" alt="CoreUI Logo">
-                <use xlink:href="static/assets/brand/coreui.svg#signet"></use>
-            </svg>
+                <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-group"></use>
+            </svg> <strong>Language Exchange Project</strong>
         </div>
         <ul class="sidebar-nav" data-coreui="navigation" data-simplebar="">
-            <li class="nav-item"><a class="nav-link" href="/user">
+            <li class="nav-item">
+                <a class="nav-link" href="/user"> <!-- Add link to profile page -->
                     <svg class="nav-icon">
-                        <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-speedometer"></use>
-                    </svg> Profile<span class="badge badge-sm bg-info ms-auto"></span></a></li>
+                        <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-user"></use>
+                    </svg> Profile
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/contact"> <!-- Add link to contact page -->
+                    <svg class="nav-icon">
+                        <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-address-book"></use>
+                    </svg> Contacts
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/message"> <!-- Add link to messages page -->
+                    <svg class="nav-icon">
+                        <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-envelope-open"></use>
+                    </svg> Messages
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/badge"> <!-- Add link to messages page -->
+                    <svg class="nav-icon">
+                        <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-badge"></use>
+                    </svg> Badges
+                </a>
+            </li>
         </ul>
         <button class="sidebar-toggler" type="button" data-coreui-toggle="unfoldable"></button>
     </div>
@@ -33,76 +54,72 @@
                     <svg class="icon icon-lg">
                         <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-menu"></use>
                     </svg>
-                </button><a class="header-brand d-md-none" href="#">
+                </button>
+                <a class="header-brand d-md-none" href="#">
                     <svg width="118" height="46" alt="CoreUI Logo">
                         <use xlink:href="static/assets/brand/coreui.svg#full"></use>
-                    </svg></a>
+                    </svg>
+                </a>
                 <ul class="header-nav d-none d-md-flex">
-                    <li class="nav-item"><a class="nav-link" href="/user">My Profile</a></li>
-
+                    <li class="nav-item"><a class="nav-link" href="/user">Profile</a></li>
                 </ul>
+                <ul class="header-nav d-none d-md-flex">
+                    <li class="nav-item"><a class="nav-link" href="/contact">Contacts</a></li>
+                </ul>
+                <ul class="header-nav d-none d-md-flex">
+                    <li class="nav-item"><a class="nav-link" href="/message">Messages</a></li>
+                </ul>
+                <ul class="header-nav d-none d-md-flex">
+                    <li class="nav-item"><a class="nav-link" href="/badge">Badges</a></li>
+                </ul>
+
                 <ul class="header-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link" href="#">
+                    <li class="nav-item"><a class="nav-link" href="/user"> <!-- Add link to profile page -->
                             <svg class="icon icon-lg">
-                                <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-bell"></use>
+                                <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-user"></use>
                             </svg></a></li>
-                    <li class="nav-item"><a class="nav-link" href="#">
+                    <li class="nav-item"><a class="nav-link" href="/contact"> <!-- Add link to contact page -->
                             <svg class="icon icon-lg">
-                                <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-list-rich"></use>
+                                <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-address-book"></use>
                             </svg></a></li>
-                    <li class="nav-item"><a class="nav-link" href="#">
+                    <li class="nav-item"><a class="nav-link" href="/message"> <!-- Add link to messages page -->
                             <svg class="icon icon-lg">
                                 <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-envelope-open"></use>
                             </svg></a></li>
+                    <li class="nav-item"><a class="nav-link" href="/badge"> <!-- Add link to badges page -->
+                            <svg class="icon icon-lg">
+                                <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-badge"></use>
+                            </svg></a></li>
                 </ul>
+
                 <ul class="header-nav ms-3">
-                    <li class="nav-item dropdown"><a class="nav-link py-0" data-coreui-toggle="dropdown" href="#"
-                            role="button" aria-haspopup="true" aria-expanded="false">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link py-0" data-coreui-toggle="dropdown" href="#" role="button"
+                            aria-haspopup="true" aria-expanded="false">
                             <div class="avatar avatar-md"><img class="avatar-img" src="{{profilePhotoPath}}"
                                     alt="user@email.com"></div>
                         </a>
                         <div class="dropdown-menu dropdown-menu-end pt-0">
-                            <div class="dropdown-header bg-light py-2">
-                                <div class="fw-semibold">Account</div>
-                            </div>
-                            <a class="dropdown-item" href="#">
-                                <svg class="icon me-2">
-                                    <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-bell"></use>
-                                </svg> Updates<span class="badge badge-sm bg-info ms-2">42</span></a><a
-                                class="dropdown-item" href="#">
-                                <svg class="icon me-2">
-                                    <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-envelope-open"></use>
-                                </svg> Messages<span class="badge badge-sm bg-success ms-2">42</span></a><a
-                                class="dropdown-item" href="#">
-                                <svg class="icon me-2">
-                                    <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-task"></use>
-                                </svg> Tasks<span class="badge badge-sm bg-danger ms-2">42</span></a><a
-                                class="dropdown-item" href="#">
-                                <svg class="icon me-2">
-                                    <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-comment-square">
-                                    </use>
-                                </svg> Comments<span class="badge badge-sm bg-warning ms-2">42</span></a>
-                            <div class="dropdown-header bg-light py-2">
-                                <div class="fw-semibold">Settings</div>
-                            </div>
-                            <a class="dropdown-item" href="#">
+                            <a class="dropdown-item" href="/user"> <!-- Add link to profile page -->
                                 <svg class="icon me-2">
                                     <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-user"></use>
-                                </svg> Profile</a><a class="dropdown-item" href="/user">
+                                </svg> Profile
+                            </a>
+                            <a class="dropdown-item" href="/contact"> <!-- Add link to contact page -->
                                 <svg class="icon me-2">
-                                    <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-settings"></use>
-                                </svg> Settings</a><a class="dropdown-item" href="#">
+                                    <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-address-book"></use>
+                                </svg> Contacts</a>
+                            <a class="dropdown-item" href="/message"> <!-- Add link to messages page -->
                                 <svg class="icon me-2">
-                                    <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-credit-card"></use>
-                                </svg> Payments<span class="badge badge-sm bg-secondary ms-2">42</span></a><a
-                                class="dropdown-item" href="#">
+                                    <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-envelope-open"></use>
+                                </svg> Messages
+                            </a>
+                            <a class="dropdown-item" href="/badge"> <!-- Add link to badges page -->
                                 <svg class="icon me-2">
-                                    <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-file"></use>
-                                </svg> Projects<span class="badge badge-sm bg-primary ms-2">42</span></a>
-                            <div class="dropdown-divider"></div><a class="dropdown-item" href="#">
-                                <svg class="icon me-2">
-                                    <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-lock-locked"></use>
-                                </svg> Lock Account</a>
+                                    <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-badge"></use>
+                                </svg> Badges
+                            </a>
+                            <div class="dropdown-divider"></div>
                             <a class="dropdown-item" href="/logout">
                                 <svg class="icon me-2">
                                     <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-account-logout">
@@ -133,7 +150,7 @@
                         <div class="card mb-4 mx-4">
                             <div class="card-body p-4">
                                 <h1>Welcome back, {{username}}!</h1>
-
+                                <br>
                                 {{#if description}}
                                 <!-- Display Profile Information -->
                                 <h2>Your Profile</h2>
@@ -141,12 +158,15 @@
                                 <p><strong>Fluent Languages:</strong> {{#each fluentLang}}{{this}}, {{/each}}</p>
                                 <p><strong>Desired Languages:</strong> {{#each learnLang}}{{this}}, {{/each}}</p>
                                 {{#if profilePhotoPath}}
-                                <img src="{{profilePhotoPath}}" alt="Profile Photo" class="img-thumbnail" style="max-width: 150px;">
+                                <img src="{{profilePhotoPath}}" alt="Profile Photo" class="img-thumbnail"
+                                    style="max-width: 150px;">
                                 {{/if}}
                                 {{else}}
+
+
                                 <!-- Profile Form -->
                                 <form action="/user" method="POST" enctype="multipart/form-data">
-                                
+
                                     <input type="hidden" name="csrfToken" value="{{csrfToken}}">
 
                                     <div class="mb-3">
@@ -178,8 +198,8 @@
                                             <label for="fluentGerman" class="form-check-label">German</label>
                                         </div>
                                         <div class="form-check">
-                                            <input type="checkbox" name="fluentLang[]" value="Chinese" id="fluentChinese"
-                                                class="form-check-input">
+                                            <input type="checkbox" name="fluentLang[]" value="Chinese"
+                                                id="fluentChinese" class="form-check-input">
                                             <label for="fluentChinese" class="form-check-label">Chinese</label>
                                         </div>
                                         <div class="form-check">
