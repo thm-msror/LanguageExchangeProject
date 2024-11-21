@@ -6,6 +6,7 @@ const cookieParser = require('cookie-parser')
 const handlebars = require('express-handlebars')
 const flash = require('./flash.js')
 const fileUpload = require('express-fileupload')
+const defaultProfilePhoto = '/static/assets/img/avatars/default.png'
 
 let app = express()
 
@@ -50,7 +51,7 @@ async function isSessionExpired(sessionKey) {
 async function sessionExpirationMiddleware(req, res, next) {
     const sessionKey = req.cookies.sessionKey
     if (!sessionKey || await isSessionExpired(sessionKey)) {
-        res.clearCookie('sessionKey') // Clear expired session cookie
+        res.cookie("sessionKey", "", {expires: new Date(Date.now())}) // Clear expired session cookie
         return res.render('login', {error: "Your session expired."}) // Redirect to login page if session is expired
     }
     next()
@@ -78,14 +79,6 @@ app.get('/', async (req, res) => {
     res.render('login', { message: message })
 })
 
-app.get('/404', async (req, res) => {
-    res.render('404')
-})
-
-app.get('/500', async (req, res) => {
-    res.render('500')
-})
-
 // Route to display user profile
 app.get('/user', sessionExpirationMiddleware, async (req, res) => {
     try {
@@ -94,11 +87,10 @@ app.get('/user', sessionExpirationMiddleware, async (req, res) => {
 
         // sessionExpirationMiddleware checks if the session is valid and redirects to login if not
 
-        const userId = session.sessionData.userId
         const username = session.sessionData.username
 
         // Fetch user profile
-        const profile = await business.getUserProfile(userId)
+        const profile = await business.getUserProfile(username)
 
         // Pass user details and CSRF token to the template
         res.render('user', {
@@ -107,7 +99,7 @@ app.get('/user', sessionExpirationMiddleware, async (req, res) => {
             description: profile.description,
             fluentLang: profile.fluentLang,
             learnLang: profile.learnLang,
-            profilePhotoPath: profile.profilePhotoPath || '/static/assets/img/avatars/default.png',
+            profilePhotoPath: profile.profilePhotoPath || defaultProfilePhoto,
         })
     } catch (error) {
         console.error('Error loading user profile:', error)
@@ -122,7 +114,7 @@ app.post('/user', sessionExpirationMiddleware, fileUpload(), async (req, res) =>
 
         // sessionExpirationMiddleware checks if the session is valid and redirects to login if not
 
-        const userId = session.sessionData.userId
+        const username = session.sessionData.username
         const csrfToken = req.body.csrfToken
 
         // Validate CSRF token
@@ -166,7 +158,7 @@ app.post('/user', sessionExpirationMiddleware, fileUpload(), async (req, res) =>
         }
 
         // Save profile through the business layer
-        await business.saveUserProfile(userId, {
+        await business.saveUserProfile(username, {
             description,
             fluentLang,
             learnLang,
@@ -286,7 +278,7 @@ app.get('/logout', async (req, res) => {
         await business.logoutUser(sessionKey)
 
         // Clear the session cookie from the client
-        res.clearCookie('sessionKey')
+        res.cookie("sessionKey", "", {expires: new Date(Date.now())}) // Clear and expire session cookie
     }
 
     // Redirect to the login page
@@ -437,13 +429,13 @@ app.get('/contact', sessionExpirationMiddleware, async (req, res) => {
     const sessionKey = req.cookies.sessionKey;
     const session = await business.getSession(sessionKey);
 
-    // You can assume the session is valid here due to the sessionExpirationMiddleware
-    const userId = session.sessionData.userId;
+    // We assume the session is valid due to the sessionExpirationMiddleware
+    const username = session.sessionData.username;
 
     // Use business layer to get user profile
-    const profile = await business.getUserProfile(userId);
+    const profile = await business.getUserProfile(username);
 
-    res.render('contact', { profilePhotoPath: profile.profilePhotoPath || '/static/assets/img/avatars/default.png' });
+    res.render('contact', { profilePhotoPath: profile.profilePhotoPath || defaultProfilePhoto });
 });
 
 // Fetch potential contacts
@@ -451,10 +443,11 @@ app.get('/api/contacts/potential', sessionExpirationMiddleware, async (req, res)
     try {
         const sessionKey = req.cookies.sessionKey;
         const session = await business.getSession(sessionKey);
-        const userId = session.sessionData.userId;
+
+        const username = session.sessionData.username;
 
         // Fetch logged-in user and their potential contacts via business layer
-        const potentialContacts = await business.getPotentialContacts(userId);
+        const potentialContacts = await business.getSuggestedContacts(username);
 
         res.json(potentialContacts);
     } catch (error) {
@@ -468,11 +461,12 @@ app.post('/api/contacts/add', sessionExpirationMiddleware, async (req, res) => {
     try {
         const sessionKey = req.cookies.sessionKey;
         const session = await business.getSession(sessionKey);
-        const userId = session.sessionData.userId;
-        const { contactId } = req.body;
+
+        const username = session.sessionData.username;
+        const { contactUsername } = req.body;
 
         // Add contact using the business layer
-        await business.addContact(userId, contactId);
+        await business.addContact(username, contactUsername);
 
         res.sendStatus(200);
     } catch (error) {
@@ -486,10 +480,10 @@ app.get('/api/contacts/current', sessionExpirationMiddleware, async (req, res) =
     try {
         const sessionKey = req.cookies.sessionKey;
         const session = await business.getSession(sessionKey);
-        const userId = session.sessionData.userId;
 
+        const username = session.sessionData.username;
         // Fetch current contacts via business layer
-        const currentContacts = await business.getCurrentContacts(userId);
+        const currentContacts = await business.getCurrentContacts(username);
 
         res.json(currentContacts);
 
@@ -505,12 +499,12 @@ app.delete('/api/contacts/remove/:contactId', sessionExpirationMiddleware, async
     try {
         const sessionKey = req.cookies.sessionKey;
         const session = await business.getSession(sessionKey);
-        const userId = session.sessionData.userId;
 
-        const { contactId } = req.params;
+        const username = session.sessionData.username;
+        const { contactUsername} = req.params;
 
         // Remove contact using the business layer
-        await business.removeContact(userId, contactId);
+        await business.removeContact(username, contactUsername);
 
         res.sendStatus(200);
     } catch (error) {
@@ -525,11 +519,20 @@ app.get('/message', sessionExpirationMiddleware, async (req, res) => {
     const sessionKey = req.cookies.sessionKey
     const session = await business.getSession(sessionKey)
 
-    // You can assume the session is valid here due to the sessionExpirationMiddleware
+    const username = session.sessionData.username
+    const profile = await business.getUserProfile(username)
+    res.render('message', { profilePhotoPath: profile.profilePhotoPath || defaultProfilePhoto })
+})
 
-    const userId = session.sessionData.userId
-    const profile = await business.getUserProfile(userId)
-    res.render('message', { profilePhotoPath: profile.profilePhotoPath || '/static/assets/img/avatars/default.png' })
+
+app.post("/message/:contactUsername", async (req, res) => {
+    const sessionKey = req.cookies.sessionKey
+    const session = await business.getSession(sessionKey)
+
+    const username = session.sessionData.username
+    const contact = req.params.contactUsername;
+
+    res.send("send message")
 })
 
 // Route to render the badge page
@@ -537,12 +540,23 @@ app.get('/badge', sessionExpirationMiddleware, async (req, res) => {
     const sessionKey = req.cookies.sessionKey
     const session = await business.getSession(sessionKey)
 
-    // You can assume the session is valid here due to the sessionExpirationMiddleware
-
-    const userId = session.sessionData.userId
-    const profile = await business.getUserProfile(userId)
-    res.render('badge', { profilePhotoPath: profile.profilePhotoPath || '/static/assets/img/avatars/default.png' })
+    const username = session.sessionData.username
+    const profile = await business.getUserProfile(username)
+    res.render('badge', { profilePhotoPath: profile.profilePhotoPath || defaultProfilePhoto })
 })
+
+
+
+app.get('/404', async (req, res) => {
+    res.render('404')
+})
+
+
+
+app.get('/500', async (req, res) => {
+    res.render('500')
+})
+
 
 /**
  * Starts the Express server and listens for incoming connections.

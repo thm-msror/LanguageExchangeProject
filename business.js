@@ -77,7 +77,7 @@ async function loginUser(username, password) {
                 userId: user._id.toString(), // Store the ObjectId as a string
                 username: user.username,
             },
-            csrfToken: csrfToken,
+            csrfToken: csrfToken
         })
 
         return { sessionKey, user}
@@ -227,6 +227,8 @@ async function verifyEmailToken(token) {
  */
 async function updateUserEmailVerified(username) {
     await persistence.updateUserEmailVerified(username)
+    let userData = await persistence.getUserDetails(username);
+    delete userData.verificationToken
 }
 
 
@@ -316,12 +318,12 @@ async function resetPassword(resetKey, password) {
 /**
  * Saves the user's profile during the initial setup.
  *
- * @param {string} userId - The user's ID.
+ * @param {string} username - The user's uunique username.
  * @param {Object} profileData - The profile data to save.
  * @returns {Promise<void>}
  */
-async function saveUserProfile(userId, profileData) {
-    if (!userId) {
+async function saveUserProfile(username, profileData) {
+    if (!username) {
         throw new Error("User ID is required.")
     }
 
@@ -334,40 +336,20 @@ async function saveUserProfile(userId, profileData) {
     }
 
     // Pass the validated data to the persistence layer
-    await persistence.saveUserProfile(userId, validatedProfileData)
+    await persistence.saveUserProfile(username, validatedProfileData)
 }
-
-
-async function blockUserProfile(userId, blockUsername) {
-    if (!userId) {
-        throw new Error("User ID is required.")
-    }
-    if (!blockUsername) {
-        throw new Error("Must specify user to block")
-    }
-
-    let blockedUsers = await business.getBlockedUsers(userId)
-    if(!blockedUsers) {
-        blockedUsers = [blockUsername]
-    } else {
-        blockedUsers.push(blockUsername)
-    }
-
-    await persistence.blockUserProfile(userId, blockedUsers)
-}
-
 
 /**
  * Fetches the user profile.
  *
- * @param {string} userId - The user's ID.
+ * @param {string} username - The user's unique username.
  * @returns {Promise<Object>} The user's profile.
  */
-async function getUserProfile(userId) {
-    if (!userId) {
+async function getUserProfile(username) {
+    if (!username) {
         throw new Error("User ID is required.")
     }
-    return await persistence.getUserProfile(userId)
+    return await persistence.getUserProfile(username)
 }
 
 /**
@@ -414,25 +396,81 @@ async function cancelToken(key) {
 }
 
 // Fetch potential contacts using persistence
-async function getPotentialContacts(userId) {
-    const userProfile = await persistence.getUserProfile(userId)
-    return await persistence.findPotentialContacts(userProfile.learnLang, userId)
+async function getSuggestedContacts(username) {
+    const userProfile = await persistence.getUserProfile(username)
+    return await persistence.findPotentialContacts(userProfile.learnLang, username)
 }
 // Get current contacts
-async function getCurrentContacts(userId) {
-    return await persistence.getCurrentContacts(userId)
+async function getCurrentContacts(username) {
+    return await persistence.getCurrentContacts(username)
 }
 
 // Add contact using persistence
-async function addContact(userId, contactId) {
-    await persistence.addContact(userId, contactId)
+async function addContact(username, contactUsername) {
+    await persistence.addContact(username, contactUsername)
 }
 
 // Remove contact using persistence
-async function removeContact(userId, contactId) {
-    await persistence.removeContact(userId, contactId)
+async function removeContact(username, contactUsername) {
+    await persistence.removeContact(username, contactUsername)
 }
 
+async function getBlockedUsers(username) {
+    return await persistence.getBlockedUsers(username);
+}
+
+async function blockUser(username, blockUsername) {
+    if (!username) {
+        throw new Error("User ID is required.")
+    }
+    if (!blockUsername) {
+        throw new Error("Must specify user to block")
+    }
+
+    let blockedUsers = await persistence.getBlockedUsers(username);
+    if(!blockedUsers) {
+        blockedUsers = [blockUsername];
+    } else {
+        blockedUsers.push(blockUsername);
+    }
+
+    await persistence.blockUser(username, blockedUsers);
+}
+
+// Store a message sent by the current user
+async function createChat(currentUser, contactUser, message) { 
+    if (!currentUser || !contactUser || !message ) {
+        throw new Error("Could not store message");
+    }
+
+    let messageData = {
+        time: new Date(Date.now()),
+        message: message,
+        sender: currentUser
+    }
+
+    let chatData = {
+        conversationId: crypto.randomUUID(),
+        user1: currentUser,
+        user2: contactUser,
+        messageData: [messageData]
+    }
+
+    return await persistence.createChat(chatData);
+}
+
+async function getChatHistory(conversationId) {
+    if (!conversationId) {
+        throw new Error("No conversation specified")
+    }
+
+    return await persistence.getChat(conversationId);
+}
+
+
+async function updateMessages(conversationId, message) {
+    return await persistence.updateMessages(conversationId, message)
+}
 
 module.exports = {
     registerUser,
@@ -450,9 +488,13 @@ module.exports = {
     getToken,
     validateToken,
     cancelToken,
-    blockUserProfile,
-    getPotentialContacts,
+    blockUser,
+    getSuggestedContacts,
     getCurrentContacts,
     addContact,
-    removeContact
+    removeContact,
+    createChat,
+    getChatHistory,
+    updateMessages,
+    getBlockedUsers
 }

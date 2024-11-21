@@ -22,6 +22,7 @@ async function connectDatabase() {
         db = client.db('LanguageExchange')
         users = db.collection('UserAccounts')
         sessions = db.collection('SessionData')
+        chats = db.collection("ChatHistory")
     }
 }
 
@@ -65,10 +66,10 @@ async function getUserDetails(username) {
  * @param {string} userId - The ID of the user to delete.
  * @returns {Promise<number>} The number of deleted documents.
  */
-async function deleteUser(userId) {
+async function deleteUser(username) {
     await connectDatabase()
 
-    const result = await users.deleteOne({ _id: new mongodb.ObjectId.createFromHexString(userId) })
+    const result = await users.deleteOne({ username })
     return result.deletedCount // Return number of deleted documents
 }
 
@@ -96,7 +97,7 @@ async function getUserByVerificationToken(token) {
  */
 async function updateUserEmailVerified(username) {
     await connectDatabase()
-    await users.updateOne({ username }, { $set: { emailVerified: true, verificationToken: null } })
+    await users.updateOne({ username }, { $set: { emailVerified: true} })
 }
 
 
@@ -248,7 +249,7 @@ async function updatePassword(username, hashedPassword) {
  * @param {Object} profileData - The profile data to save.
  * @returns {Promise<void>}
  */
-async function saveUserProfile(userId, profileData) {
+async function saveUserProfile(username, profileData) {
     await connectDatabase()
 
     const update = {
@@ -260,13 +261,12 @@ async function saveUserProfile(userId, profileData) {
         },
     }
 
-    const result = await users.updateOne({ _id: new mongodb.ObjectId(userId) }, update)
+    const result = await users.updateOne({ username }, update)
 
     if (result.matchedCount === 0) {
         throw new Error("User not found.")
     }
 }
-
 
 /**
  * Fetches the user's profile from the database.
@@ -274,10 +274,10 @@ async function saveUserProfile(userId, profileData) {
  * @param {string} userId - The user's ID.
  * @returns {Promise<Object>} The user's profile.
  */
-async function getUserProfile(userId) {
+async function getUserProfile(username) {
     await connectDatabase()
 
-    const user = await users.findOne({ _id: new mongodb.ObjectId(userId) })
+    const user = await users.findOne({ username })
     if (!user) {
         throw new Error("User not found.")
     }
@@ -290,18 +290,64 @@ async function getUserProfile(userId) {
     }
 }
 
-async function getBlockedUsers(userId) {
+async function getBlockedUsers(username) {
     await connectDatabase();
 
-    let blockedUsers = await users.findOne({_id: new mongodb.ObjectId(userId)})
+    let blockedUsers = await users.findOne({username})
     return blockedUsers
 }
 
-async function blockUser(userId, blockedUsers) {
+async function blockUser(username, blockedUsers) {
     await connectDatabase();
 
-    await users.updateOne({_id: new mongodb.ObjectId(userId)}, 
+    await users.updateOne({username}, 
         {$set: {blockedUsers: blockedUsers}})
+}
+
+async function getSuggestedContacts(learnLang, username) {
+    await connectDatabase();
+    return await users.find({
+        fluentLang: { $in: learnLang },
+        username: { $ne: username },
+    }).toArray();
+}
+
+async function getCurrentContacts(username) {
+    await connectDatabase();
+    const user = await users.findOne({ username });
+    return await users.find({ username: { $in: user.contacts || [] } }).toArray();
+}
+
+async function addContact(username, contactUsername) {
+    await connectDatabase();
+    await users.updateOne(
+        { username },
+        { $addToSet: { contacts: contactUsername } } // Prevent duplicates
+    );
+}
+
+//Initiation of chat between users
+async function createChat(chatData) {
+    await connectDatabase();
+    await chats.insertOne(chatData);
+    return
+}
+
+
+//Get chat 
+async function getChat(conversationId) {
+    await connectDatabase();
+    let chatHistory = await chats.findOne({conversationId: conversationId});
+    return chatHistory;
+}
+
+
+//update the chats
+async function updateMessages(conversationId, messageData) {
+    await connectDatabase();
+    await chats.updateOne({conversationId}, 
+        {$set: {messageData:messageData}})
+    
 }
 
 
@@ -323,5 +369,11 @@ module.exports = {
     saveUserProfile,
     getUserProfile,
     getBlockedUsers,
-    blockUser
+    blockUser,
+    getCurrentContacts,
+    getSuggestedContacts,
+    addContact,
+    createChat,
+    getChat,
+    updateMessages
 }
