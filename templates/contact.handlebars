@@ -135,7 +135,7 @@
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb my-0 ms-2">
                         <li class="breadcrumb-item">
-                            <a href="/user">Profile</a>
+                            <a href="/contact">Contact</a>
                         </li>
                     </ol>
                 </nav>
@@ -143,18 +143,121 @@
         </header>
 
         <!-- Add display required for contact functionality here -->
+        <div class="row">
+            <!-- Left Column: Potential Contacts -->
+            <div class="col-md-6">
+                <h2>Potential Contacts</h2>
+                <div id="potential-contacts">
+                    <!-- Populated dynamically with JS -->
+                </div>
+            </div>
 
-
-    <div class="body flex-grow-1 px-3">
-        <div class="container-lg">
+            <!-- Right Column: Your Contact List -->
+            <div class="col-md-6">
+                <h2>Your Contacts</h2>
+                <div id="contact-list">
+                    <!-- Populated dynamically with JS -->
+                </div>
+            </div>
         </div>
-    </div>
 
-    <footer class="footer">
-        <div><a href="https://coreui.io">CoreUI </a><a href="https://coreui.io">Bootstrap Admin Template</a> © 2023
-            creativeLabs.</div>
-        <div class="ms-auto">Powered by&nbsp;<a href="https://coreui.io/docs/">CoreUI UI Components</a></div>
-    </footer>
+        <script>
+            async function fetchContacts() {
+                try {
+                    // Fetch potential contacts
+                    const potentialResponse = await fetch('/api/contacts/potential');
+                    const potentialContacts = await potentialResponse.json();
+
+                    // Fetch current contacts
+                    const currentResponse = await fetch('/api/contacts/current');
+                    const currentContacts = await currentResponse.json();
+
+                    // Filter potential contacts to exclude already added contacts
+                    const filteredPotentialContacts = potentialContacts.filter(
+                        potentialContact => !currentContacts.some(contact => contact._id === potentialContact._id)
+                    );
+
+                    // Render Potential Contacts
+                    const potentialContainer = document.getElementById('potential-contacts');
+                    potentialContainer.innerHTML = filteredPotentialContacts.map(contact => `
+           
+            <div class="container">
+                <div class="row justify-content-center">
+                    <div class="col-md-10">
+                        <div class="card mb-4 mx-4">
+                            <div class="card-body p-4">
+                                <img src="${contact.profilePhotoPath}" alt="${contact.username}" class="avatar"> 
+                                <strong>${contact.username}</strong> 
+                                <button class="btn btn-block btn-success" onclick="addContact('${contact._id}')">Add</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+                    // Render Current Contacts
+                    const contactContainer = document.getElementById('contact-list');
+                    contactContainer.innerHTML = currentContacts.map(contact => `
+            <div class="contact-card">
+                <a href="/user/${contact._id}">${contact.username}</a>
+                <button class="btn btn-block btn-error" onclick="removeContact('${contact._id}')">Remove</button>
+            </div>
+        `).join('');
+                } catch (error) {
+                    console.error('Error fetching contacts:', error);
+                }
+            }
+
+            async function addContact(contactId) {
+                try {
+                    const response = await fetch('/api/contacts/add', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contactId }),
+                    });
+
+                    if (response.ok) {
+                        // Re-fetch contacts to update the UI after adding
+                        fetchContacts();
+                    } else {
+                        console.error('Failed to add contact:', await response.text());
+                    }
+                } catch (error) {
+                    console.error('Error adding contact:', error);
+                }
+            }
+
+            async function removeContact(contactId) {
+                try {
+                    const response = await fetch(`/api/contacts/remove/${contactId}`, { method: 'DELETE' });
+
+                    if (response.ok) {
+                        // Re-fetch contacts to update the UI after removing
+                        fetchContacts();
+                    } else {
+                        console.error('Failed to remove contact:', await response.text());
+                    }
+                } catch (error) {
+                    console.error('Error removing contact:', error);
+                }
+            }
+
+            // Initial load of contacts when the page is loaded
+            fetchContacts();
+
+        </script>
+
+        <div class="body flex-grow-1 px-3">
+            <div class="container-lg">
+            </div>
+        </div>
+
+        <footer class="footer">
+            <div><a href="https://coreui.io">CoreUI </a><a href="https://coreui.io">Bootstrap Admin Template</a> © 2023
+                creativeLabs.</div>
+            <div class="ms-auto">Powered by&nbsp;<a href="https://coreui.io/docs/">CoreUI UI Components</a></div>
+        </footer>
     </div>
 </body>
 

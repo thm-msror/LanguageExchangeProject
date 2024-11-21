@@ -155,8 +155,8 @@
                                 <!-- Display Profile Information -->
                                 <h2>Your Profile</h2>
                                 <p><strong>Description:</strong> {{description}}</p>
-                                <p><strong>Fluent Languages:</strong> {{#each fluentLang}}{{this}}, {{/each}}</p>
-                                <p><strong>Desired Languages:</strong> {{#each learnLang}}{{this}}, {{/each}}</p>
+                                <p><strong>Fluent Languages:</strong> <br>{{#each fluentLang}}{{this}}<br> {{/each}}</p>
+                                <p><strong>Desired Languages:</strong> <br>{{#each learnLang}}{{this}}<br> {{/each}}</p>
                                 {{#if profilePhotoPath}}
                                 <img src="{{profilePhotoPath}}" alt="Profile Photo" class="img-thumbnail"
                                     style="max-width: 150px;">
@@ -218,6 +218,9 @@
                                             <label for="fluentHindi" class="form-check-label">Hindi</label>
                                         </div>
                                     </div>
+                                    {{#if error}}
+                                    <div class="alert alert-danger">{{error}}</div>
+                                    {{/if}}
 
                                     <div class="mb-3">
                                         <label class="form-label">Desired Languages:</label>
@@ -262,6 +265,9 @@
                                             <label for="learnHindi" class="form-check-label">Hindi</label>
                                         </div>
                                     </div>
+                                    {{#if error}}
+                                    <div class="alert alert-danger">{{error}}</div>
+                                    {{/if}}
 
                                     <div class="mb-3">
                                         <label for="profilePhoto" class="form-label">Upload Profile Photo:</label>

@@ -148,6 +148,14 @@ app.post('/user', sessionExpirationMiddleware, fileUpload(), async (req, res) =>
             learnLang = [req.body['learnLang[]']]
         }
 
+        if (!fluentLang || fluentLang.length < 1 || fluentLang.length > 5) {
+            return res.render('user', { error: "Select 1 to 5 fluent languages." })
+        }
+        if (!learnLang || learnLang.length < 1 || learnLang.length > 5) {
+            return res.render('user', { error: "Select 1 to 5 languages you want to learn." })
+        }
+
+
         let profilePhotoPath = null
         if (req.files?.profilePhoto) {
             const photo = req.files.profilePhoto
@@ -422,18 +430,95 @@ app.post('/reset-password', async (req, res) => {
 
 })
 
+//Contact page functionality 
+
 // Route to render the contact page
 app.get('/contact', sessionExpirationMiddleware, async (req, res) => {
-    const sessionKey = req.cookies.sessionKey
-    const session = await business.getSession(sessionKey)
+    const sessionKey = req.cookies.sessionKey;
+    const session = await business.getSession(sessionKey);
 
     // You can assume the session is valid here due to the sessionExpirationMiddleware
+    const userId = session.sessionData.userId;
 
-    const userId = session.sessionData.userId
-    const profile = await business.getUserProfile(userId)
+    // Use business layer to get user profile
+    const profile = await business.getUserProfile(userId);
 
-    res.render('contact', { profilePhotoPath: profile.profilePhotoPath || '/static/assets/img/avatars/default.png' })
-})
+    res.render('contact', { profilePhotoPath: profile.profilePhotoPath || '/static/assets/img/avatars/default.png' });
+});
+
+// Fetch potential contacts
+app.get('/api/contacts/potential', sessionExpirationMiddleware, async (req, res) => {
+    try {
+        const sessionKey = req.cookies.sessionKey;
+        const session = await business.getSession(sessionKey);
+        const userId = session.sessionData.userId;
+
+        // Fetch logged-in user and their potential contacts via business layer
+        const potentialContacts = await business.getPotentialContacts(userId);
+
+        res.json(potentialContacts);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to fetch potential contacts' });
+    }
+});
+
+// Add contact
+app.post('/api/contacts/add', sessionExpirationMiddleware, async (req, res) => {
+    try {
+        const sessionKey = req.cookies.sessionKey;
+        const session = await business.getSession(sessionKey);
+        const userId = session.sessionData.userId;
+        const { contactId } = req.body;
+
+        // Add contact using the business layer
+        await business.addContact(userId, contactId);
+
+        res.sendStatus(200);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to add contact' });
+    }
+});
+
+// Fetch current contacts
+app.get('/api/contacts/current', sessionExpirationMiddleware, async (req, res) => {
+    try {
+        const sessionKey = req.cookies.sessionKey;
+        const session = await business.getSession(sessionKey);
+        const userId = session.sessionData.userId;
+
+        // Fetch current contacts via business layer
+        const currentContacts = await business.getCurrentContacts(userId);
+
+        res.json(currentContacts);
+
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to fetch current contacts' });
+    }
+});
+
+// Remove contact
+app.delete('/api/contacts/remove/:contactId', sessionExpirationMiddleware, async (req, res) => {
+    try {
+        const sessionKey = req.cookies.sessionKey;
+        const session = await business.getSession(sessionKey);
+        const userId = session.sessionData.userId;
+
+        const { contactId } = req.params;
+
+        // Remove contact using the business layer
+        await business.removeContact(userId, contactId);
+
+        res.sendStatus(200);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to remove contact' });
+    }
+});
+
 
 // Route to render the message page
 app.get('/message', sessionExpirationMiddleware, async (req, res) => {

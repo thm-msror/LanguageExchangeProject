@@ -72,7 +72,7 @@ async function loginUser(username, password) {
 
         await persistence.saveSession({
             key: sessionKey,
-            expiry,
+            expiry: expiry,
             data: {
                 userId: user._id.toString(), // Store the ObjectId as a string
                 username: user.username,
@@ -244,7 +244,8 @@ async function initiatePasswordReset(email) {
     }
 
     const resetKey = crypto.randomUUID()
-    await persistence.setResetKey(user.username, resetKey)
+    let resetExpiry = new Date(Date.now() + 2 * 60 * 1000)
+    await persistence.setResetKey(user.username, resetKey, resetExpiry)
 
     // Simulate sending an email by logging to the console
     console.log(`Email sent to ${email}`)
@@ -311,6 +312,7 @@ async function resetPassword(resetKey, password) {
     return true // Password reset successful
 }
 
+
 /**
  * Saves the user's profile during the initial setup.
  *
@@ -336,6 +338,25 @@ async function saveUserProfile(userId, profileData) {
 }
 
 
+async function blockUserProfile(userId, blockUsername) {
+    if (!userId) {
+        throw new Error("User ID is required.")
+    }
+    if (!blockUsername) {
+        throw new Error("Must specify user to block")
+    }
+
+    let blockedUsers = await business.getBlockedUsers(userId)
+    if(!blockedUsers) {
+        blockedUsers = [blockUsername]
+    } else {
+        blockedUsers.push(blockUsername)
+    }
+
+    await persistence.blockUserProfile(userId, blockedUsers)
+}
+
+
 /**
  * Fetches the user profile.
  *
@@ -347,19 +368,6 @@ async function getUserProfile(userId) {
         throw new Error("User ID is required.")
     }
     return await persistence.getUserProfile(userId)
-}
-
-/**
- * Regenerate the CSRF token after every successful request
- *
- * @param {string} sessionKey - The session key.
- * @returns {Promise<string>} The generated token.
- */
-async function renewToken(sessionKey) {
-    // Generate a secure random token (32 bytes = 64 hex characters)
-    const newToken = crypto.randomBytes(32).toString('hex')
-    await persistence.updateSession(sessionKey, { csrfToken: newToken })
-    return newToken
 }
 
 /**
@@ -405,6 +413,27 @@ async function cancelToken(key) {
     }
 }
 
+// Fetch potential contacts using persistence
+async function getPotentialContacts(userId) {
+    const userProfile = await persistence.getUserProfile(userId)
+    return await persistence.findPotentialContacts(userProfile.learnLang, userId)
+}
+// Get current contacts
+async function getCurrentContacts(userId) {
+    return await persistence.getCurrentContacts(userId)
+}
+
+// Add contact using persistence
+async function addContact(userId, contactId) {
+    await persistence.addContact(userId, contactId)
+}
+
+// Remove contact using persistence
+async function removeContact(userId, contactId) {
+    await persistence.removeContact(userId, contactId)
+}
+
+
 module.exports = {
     registerUser,
     loginUser,
@@ -418,8 +447,12 @@ module.exports = {
     logoutUser,
     getUserProfile,
     saveUserProfile,
-    renewToken,
     getToken,
     validateToken,
     cancelToken,
+    blockUserProfile,
+    getPotentialContacts,
+    getCurrentContacts,
+    addContact,
+    removeContact
 }

@@ -17,7 +17,7 @@ let sessions = undefined
  */
 async function connectDatabase() {
     if (!client) {
-        client = new mongodb.MongoClient('mongodb+srv://tehreemmasroor:12class34@cluster0.1ykuj3l.mongodb.net/')
+        client = new mongodb.MongoClient('mongodb+srv://60302181:12class34@cluster0.yrpo2.mongodb.net/')
         await client.connect()
         db = client.db('LanguageExchange')
         users = db.collection('UserAccounts')
@@ -111,11 +111,10 @@ async function updateUserEmailVerified(username) {
  */
 async function saveSession(sessionData) {
     await connectDatabase()
-
     const { key, expiry, data, csrfToken } = sessionData
     const result = await sessions.insertOne({
         key,
-        expiry,
+        expiry: expiry,
         sessionData: data,
         csrfToken: csrfToken
     })
@@ -201,7 +200,7 @@ async function getUserByEmail(email) {
  * @param {Date} expiry - The expiration time for the reset key.
  * @returns {Promise<void>} Resolves once the reset key and expiry are set.
  */
-async function setResetKey(username, resetkey, expiry = new Date(Date.now() + 1 * 60 * 60 * 1000)) { // 1-hour expiry
+async function setResetKey(username, resetkey, expiry) { 
     await connectDatabase()
     await users.updateOne({ username: username }, { $set: { resetkey: resetkey, resetKeyExpiry: expiry } })
 }
@@ -216,7 +215,6 @@ async function setResetKey(username, resetkey, expiry = new Date(Date.now() + 1 
  */
 async function getUserByResetKey(resetKey) {
     await connectDatabase()
-
     const user = await users.findOne({ resetkey: resetKey })
 
     if (!user) {
@@ -292,6 +290,20 @@ async function getUserProfile(userId) {
     }
 }
 
+async function getBlockedUsers(userId) {
+    await connectDatabase();
+
+    let blockedUsers = await users.findOne({_id: new mongodb.ObjectId(userId)})
+    return blockedUsers
+}
+
+async function blockUser(userId, blockedUsers) {
+    await connectDatabase();
+
+    await users.updateOne({_id: new mongodb.ObjectId(userId)}, 
+        {$set: {blockedUsers: blockedUsers}})
+}
+
 
 // Exported Functions
 module.exports = {
@@ -309,5 +321,7 @@ module.exports = {
     getUserByResetKey,
     updatePassword,
     saveUserProfile,
-    getUserProfile
+    getUserProfile,
+    getBlockedUsers,
+    blockUser
 }
