@@ -57,7 +57,7 @@
                 </button>
                 <a class="header-brand d-md-none" href="#">
                     <svg width="118" height="46" alt="CoreUI Logo">
-                        <use xlink:href="static/assets/brand/coreui.svg#full"></use>
+                        <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-group"></use>
                     </svg>
                 </a>
                 <ul class="header-nav d-none d-md-flex">
@@ -130,33 +130,34 @@
                     </li>
                 </ul>
             </div>
-            <div class="header-divider"></div>
-            <div class="container-fluid">
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb my-0 ms-2">
-                        <li class="breadcrumb-item">
-                            <a href="/contact">Contact</a>
-                        </li>
-                    </ol>
-                </nav>
-            </div>
         </header>
 
-        <!-- Add display required for contact functionality here -->
-        <div class="row">
-            <!-- Left Column: Potential Contacts -->
-            <div class="col-md-6">
-                <h2>Potential Contacts</h2>
-                <div id="potential-contacts">
-                    <!-- Populated dynamically with JS -->
-                </div>
-            </div>
+        <!-- Contact functionality -->
 
-            <!-- Right Column: Your Contact List -->
-            <div class="col-md-6">
-                <h2>Your Contacts</h2>
-                <div id="contact-list">
-                    <!-- Populated dynamically with JS -->
+        <div class="container">
+            <div class="row">
+                <!-- Left Column: Suggested Contacts -->
+                <div class="col-12 col-md-6">
+                    <div class="card mb-4 mx-4">
+                        <div class="card-body p-4">
+                            <h2 style="text-align: center">Suggested Contacts</h2>
+                            <div id="suggested-contacts">
+                                <!-- Populated dynamically with JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Your Contact List -->
+                <div class="col-12 col-md-6">
+                    <div class="card mb-4 mx-4">
+                        <div class="card-body p-4">
+                            <h2 style="text-align: center">Your Contacts</h2>
+                            <div id="contact-list">
+                                <!-- Populated dynamically with JS -->
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -164,58 +165,58 @@
         <script>
             async function fetchContacts() {
                 try {
-                    // Fetch potential contacts
-                    const potentialResponse = await fetch('/api/contacts/potential');
-                    const potentialContacts = await potentialResponse.json();
+                    // Fetch suggested contacts
+                    const suggestedResponse = await fetch('/api/contacts/suggested');
+                    const suggestedContacts = await suggestedResponse.json();
 
                     // Fetch current contacts
                     const currentResponse = await fetch('/api/contacts/current');
                     const currentContacts = await currentResponse.json();
 
-                    // Filter potential contacts to exclude already added contacts
-                    const filteredPotentialContacts = potentialContacts.filter(
-                        potentialContact => !currentContacts.some(contact => contact._id === potentialContact._id)
+                    // Filter suggested contacts to exclude already added contacts
+                    const filteredsuggestedContacts = suggestedContacts.filter(
+                        suggestedContact => !currentContacts.some(contact => contact._id === suggestedContact._id)
                     );
 
-                    // Render Potential Contacts
-                    const potentialContainer = document.getElementById('potential-contacts');
-                    potentialContainer.innerHTML = filteredPotentialContacts.map(contact => `
-           
-            <div class="container">
-                <div class="row justify-content-center">
-                    <div class="col-md-10">
-                        <div class="card mb-4 mx-4">
-                            <div class="card-body p-4">
-                                <img src="${contact.profilePhotoPath}" alt="${contact.username}" class="avatar"> 
-                                <strong>${contact.username}</strong> 
-                                <button class="btn btn-block btn-success" onclick="addContact('${contact._id}')">Add</button>
-                            </div>
+                    // Render suggested Contacts
+                    const suggestedContainer = document.getElementById('suggested-contacts');
+                    suggestedContainer.innerHTML = filteredsuggestedContacts
+                        .map(contact => `
+                        <br>
+                        <div class="d-flex align-items-center justify-content-center mb-3"> <!-- Flex container for alignment -->
+                            <img src="${contact.profilePhotoPath}" alt="${contact.username}" class="avatar me-2"> 
+                            <strong class="me-2">${contact.username}</strong> 
+                            <button class="btn btn-success btn-sm ms-3" onclick="addContact('${contact.username}')">Add</button>
                         </div>
-                    </div>
-                </div>
-            </div>
-        `).join('');
+                        `).join('');
 
                     // Render Current Contacts
                     const contactContainer = document.getElementById('contact-list');
-                    contactContainer.innerHTML = currentContacts.map(contact => `
-            <div class="contact-card">
-                <a href="/user/${contact._id}">${contact.username}</a>
-                <button class="btn btn-block btn-error" onclick="removeContact('${contact._id}')">Remove</button>
-            </div>
-        `).join('');
+                    contactContainer.innerHTML = currentContacts
+                        .map(contact => `
+                            <br>    
+                            <div class="d-flex align-items-center justify-content-center mb-3"> <!-- Flex container for alignment -->
+                                <img src="${contact.profilePhotoPath}" alt="${contact.username}" class="avatar me-2"> 
+                                <a href="/user/${contact.username}" class="me-2" style="color: inherit; text-decoration: none;"><strong>${contact.username}</strong></a>
+                                <button class="btn btn-danger btn-sm ms-3" onclick="removeContact('${contact.username}')">Remove</button>
+                            </div>
+                        `).join('');
+
+
                 } catch (error) {
                     console.error('Error fetching contacts:', error);
                 }
+                
             }
 
-            async function addContact(contactId) {
+            async function addContact(contactUsername) {
                 try {
                     const response = await fetch('/api/contacts/add', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ contactId }),
+                        body: JSON.stringify({ contactUsername }),
                     });
+
 
                     if (response.ok) {
                         // Re-fetch contacts to update the UI after adding
@@ -228,9 +229,9 @@
                 }
             }
 
-            async function removeContact(contactId) {
+            async function removeContact(contactUsername) {
                 try {
-                    const response = await fetch(`/api/contacts/remove/${contactId}`, { method: 'DELETE' });
+                    const response = await fetch(`/api/contacts/remove/${contactUsername}`, { method: 'DELETE' });
 
                     if (response.ok) {
                         // Re-fetch contacts to update the UI after removing

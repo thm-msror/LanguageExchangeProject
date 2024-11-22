@@ -7,39 +7,72 @@
 --><!-- Breadcrumb-->
 <html lang="en">
 
+<head>
+    <base href="./">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <meta name="description" content="CoreUI - Open Source Bootstrap Admin Template">
+    <meta name="author" content="Łukasz Holeczek">
+    <meta name="keyword" content="Bootstrap,Admin,Template,Open,Source,jQuery,CSS,HTML,RWD,Dashboard">
+    <title>Language Exchange Project</title>
+    <link rel="apple-touch-icon" sizes="57x57" href="/static/assets/favicon/apple-icon-57x57.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="/static/assets/favicon/apple-icon-60x60.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="/static/assets/favicon/apple-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="/static/assets/favicon/apple-icon-76x76.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="/static/assets/favicon/apple-icon-114x114.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="/static/assets/favicon/apple-icon-120x120.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="/static/assets/favicon/apple-icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/static/assets/favicon/apple-icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/assets/favicon/apple-icon-180x180.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/static/assets/favicon/android-icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/assets/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="/static/assets/favicon/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/assets/favicon/favicon-16x16.png">
+    <link rel="manifest" href="/static/assets/favicon/manifest.json">
+    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="msapplication-TileImage" content="/static/assets/favicon/ms-icon-144x144.png">
+    <meta name="theme-color" content="#ffffff">
+    <!-- /static/Vendors styles-->
+    <link rel="stylesheet" href="/static//static/vendors/simplebar/css/simplebar.css">
+    <link rel="stylesheet" href="/static/css//static/vendors/simplebar.css">
+    <!-- Main styles for this application-->
+    <link href="/static/css/style.css" rel="stylesheet">
+</head>
+
 <body>
     <div class="sidebar sidebar-dark sidebar-fixed" id="sidebar">
         <div class="sidebar-brand d-none d-md-flex">
             <svg class="sidebar-brand-full" width="118" height="46" alt="CoreUI Logo">
-                <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-group"></use>
+                <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-group"></use>
             </svg> <strong>Language Exchange Project</strong>
         </div>
         <ul class="sidebar-nav" data-coreui="navigation" data-simplebar="">
             <li class="nav-item">
                 <a class="nav-link" href="/user"> <!-- Add link to profile page -->
                     <svg class="nav-icon">
-                        <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-user"></use>
+                        <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-user"></use>
                     </svg> Profile
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link" href="/contact"> <!-- Add link to contact page -->
                     <svg class="nav-icon">
-                        <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-address-book"></use>
+                        <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-address-book"></use>
                     </svg> Contacts
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link" href="/message"> <!-- Add link to messages page -->
                     <svg class="nav-icon">
-                        <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-envelope-open"></use>
+                        <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-envelope-open"></use>
                     </svg> Messages
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link" href="/badge"> <!-- Add link to messages page -->
                     <svg class="nav-icon">
-                        <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-badge"></use>
+                        <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-badge"></use>
                     </svg> Badges
                 </a>
             </li>
@@ -52,7 +85,7 @@
                 <button class="header-toggler px-md-0 me-md-3" type="button"
                     onclick="coreui.Sidebar.getInstance(document.querySelector('#sidebar')).toggle()">
                     <svg class="icon icon-lg">
-                        <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-menu"></use>
+                        <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-menu"></use>
                     </svg>
                 </button>
                 <a class="header-brand d-md-none" href="#">
@@ -76,19 +109,19 @@
                 <ul class="header-nav ms-auto">
                     <li class="nav-item"><a class="nav-link" href="/user"> <!-- Add link to profile page -->
                             <svg class="icon icon-lg">
-                                <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-user"></use>
+                                <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-user"></use>
                             </svg></a></li>
                     <li class="nav-item"><a class="nav-link" href="/contact"> <!-- Add link to contact page -->
                             <svg class="icon icon-lg">
-                                <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-address-book"></use>
+                                <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-address-book"></use>
                             </svg></a></li>
                     <li class="nav-item"><a class="nav-link" href="/message"> <!-- Add link to messages page -->
                             <svg class="icon icon-lg">
-                                <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-envelope-open"></use>
+                                <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-envelope-open"></use>
                             </svg></a></li>
                     <li class="nav-item"><a class="nav-link" href="/badge"> <!-- Add link to badges page -->
                             <svg class="icon icon-lg">
-                                <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-badge"></use>
+                                <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-badge"></use>
                             </svg></a></li>
                 </ul>
 
@@ -102,27 +135,27 @@
                         <div class="dropdown-menu dropdown-menu-end pt-0">
                             <a class="dropdown-item" href="/user"> <!-- Add link to profile page -->
                                 <svg class="icon me-2">
-                                    <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-user"></use>
+                                    <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-user"></use>
                                 </svg> Profile
                             </a>
                             <a class="dropdown-item" href="/contact"> <!-- Add link to contact page -->
                                 <svg class="icon me-2">
-                                    <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-address-book"></use>
+                                    <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-address-book"></use>
                                 </svg> Contacts</a>
                             <a class="dropdown-item" href="/message"> <!-- Add link to messages page -->
                                 <svg class="icon me-2">
-                                    <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-envelope-open"></use>
+                                    <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-envelope-open"></use>
                                 </svg> Messages
                             </a>
                             <a class="dropdown-item" href="/badge"> <!-- Add link to badges page -->
                                 <svg class="icon me-2">
-                                    <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-badge"></use>
+                                    <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-badge"></use>
                                 </svg> Badges
                             </a>
                             <div class="dropdown-divider"></div>
                             <a class="dropdown-item" href="/logout">
                                 <svg class="icon me-2">
-                                    <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-account-logout">
+                                    <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-account-logout">
                                     </use>
                                 </svg> Logout
                             </a>
@@ -132,7 +165,30 @@
             </div>
         </header>
 
-        <!-- Add display required for message functionality here  -->
+        <!-- Main content -->
+        <div class="bg-light min-vh-100 d-flex flex-row align-items-center">
+            <div class="container">
+                <div class="row justify-content-center">
+                    <div class="col-md-10">
+                        <div class="card mb-4 mx-4">
+                            <div class="card-body p-4">
+                                <!-- Display Contact's Profile Information -->
+                                <h2>Your Contact's Profile</h2>
+                                <p><strong>Description:</strong> {{contactProfile.description}}</p>
+                                <p><strong>Fluent Languages:</strong> <br>{{#each
+                                    contactProfile.fluentLang}}{{this}}<br> {{/each}}</p>
+                                <p><strong>Desired Languages:</strong> <br>{{#each
+                                    contactProfile.learnLang}}{{this}}<br> {{/each}}</p>
+                                {{#if contactProfile.profilePhotoPath}}
+                                <img src="{{contactProfile.profilePhotoPath}}" alt="Profile Photo" class="img-thumbnail"
+                                    style="max-width: 150px;">
+                                {{/if}}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <div class="body flex-grow-1 px-3">
             <div class="container-lg">
@@ -145,6 +201,12 @@
             <div class="ms-auto">Powered by&nbsp;<a href="https://coreui.io/docs/">CoreUI UI Components</a></div>
         </footer>
     </div>
+
+    <!-- CoreUI and necessary plugins-->
+    <script src="/static/vendors/@coreui/coreui/js/coreui.bundle.min.js"></script>
+    <script src="/static/vendors/simplebar/js/simplebar.min.js"></script>
+    <script>
+    </script>
 </body>
 
 </html>

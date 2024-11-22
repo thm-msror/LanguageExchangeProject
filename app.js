@@ -19,6 +19,7 @@ app.engine('handlebars', handlebars.engine())
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(cookieParser())
 app.use('/static', express.static(__dirname + "/static"))
+app.use(bodyParser.json())
 
 /**
  * Checks if a session is expired based on the session key.
@@ -438,21 +439,22 @@ app.get('/contact', sessionExpirationMiddleware, async (req, res) => {
     res.render('contact', { profilePhotoPath: profile.profilePhotoPath || defaultProfilePhoto });
 });
 
-// Fetch potential contacts
-app.get('/api/contacts/potential', sessionExpirationMiddleware, async (req, res) => {
+// Fetch suggested contacts
+app.get('/api/contacts/suggested', sessionExpirationMiddleware, async (req, res) => {
     try {
         const sessionKey = req.cookies.sessionKey;
         const session = await business.getSession(sessionKey);
 
         const username = session.sessionData.username;
 
-        // Fetch logged-in user and their potential contacts via business layer
-        const potentialContacts = await business.getSuggestedContacts(username);
+        // Fetch logged-in user and their suggested contacts via business layer
+        const suggestedContacts = await business.getSuggestedContacts(username);
 
-        res.json(potentialContacts);
+        res.json(suggestedContacts);
+
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'Failed to fetch potential contacts' });
+        res.status(500).json({ error: 'Failed to fetch suggested contacts' });
     }
 });
 
@@ -463,7 +465,7 @@ app.post('/api/contacts/add', sessionExpirationMiddleware, async (req, res) => {
         const session = await business.getSession(sessionKey);
 
         const username = session.sessionData.username;
-        const { contactUsername } = req.body;
+        const contactUsername = req.body.contactUsername
 
         // Add contact using the business layer
         await business.addContact(username, contactUsername);
@@ -494,8 +496,41 @@ app.get('/api/contacts/current', sessionExpirationMiddleware, async (req, res) =
     }
 });
 
+app.get('/user/:contactUsername', sessionExpirationMiddleware, async (req, res) => {
+    try {
+        const contactUsername = req.params.contactUsername; // Get the contact username from the URL parameters
+        const sessionKey = req.cookies.sessionKey; // Get the session key from cookies
+        const session = await business.getSession(sessionKey); // Fetch the session from the business layer
+
+        const currentUsername = session.sessionData.username; // Get the current logged-in username
+
+        // Fetch the profile of the logged-in user
+        const currentUserProfile = await business.getUserProfile(currentUsername);
+        
+        // Fetch the profile of the contact user
+        const contactProfile = await business.getUserProfile(contactUsername);
+
+        // Check if the contact profile exists
+        if (!contactProfile) {
+            return res.render('404', { error: "User  not found." });
+        }
+
+        // Render the user profile page with both the logged-in user's and the contact's information
+        res.render('contactprofile', {
+            currentUsername, // Current logged-in user's username
+            currentUserProfile, // Current user's profile data
+            contactProfile, // Contact's profile data
+            profilePhotoPath: currentUserProfile.profilePhotoPath || defaultProfilePhoto, // Default profile photo for current user
+        });
+
+    } catch (error) {
+        console.error('Error loading user profile:', error);
+        res.status(500).render('500', { error: 'Failed to load profile. Please try again later.' });
+    }
+});
+
 // Remove contact
-app.delete('/api/contacts/remove/:contactId', sessionExpirationMiddleware, async (req, res) => {
+app.delete('/api/contacts/remove/:contactUsername', sessionExpirationMiddleware, async (req, res) => {
     try {
         const sessionKey = req.cookies.sessionKey;
         const session = await business.getSession(sessionKey);

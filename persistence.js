@@ -17,7 +17,7 @@ let sessions = undefined
  */
 async function connectDatabase() {
     if (!client) {
-        client = new mongodb.MongoClient('mongodb+srv://60302181:12class34@cluster0.yrpo2.mongodb.net/')
+        client = new mongodb.MongoClient('mongodb+srv://tehreemmasroor:12class34@cluster0.1ykuj3l.mongodb.net/')
         await client.connect()
         db = client.db('LanguageExchange')
         users = db.collection('UserAccounts')
@@ -320,9 +320,18 @@ async function getCurrentContacts(username) {
 
 async function addContact(username, contactUsername) {
     await connectDatabase();
+
     await users.updateOne(
         { username },
         { $addToSet: { contacts: contactUsername } } // Prevent duplicates
+    );
+}
+
+async function removeContact(username, contactUsername) {
+    await connectDatabase();
+    await users.updateOne(
+        { username },
+        { $pull: { contacts: contactUsername } } // Pull removes a matching element
     );
 }
 
@@ -333,14 +342,12 @@ async function createChat(chatData) {
     return
 }
 
-
 //Get chat 
 async function getChat(conversationId) {
     await connectDatabase();
     let chatHistory = await chats.findOne({conversationId: conversationId});
     return chatHistory;
 }
-
 
 //update the chats
 async function updateMessages(conversationId, messageData) {
@@ -349,7 +356,6 @@ async function updateMessages(conversationId, messageData) {
         {$set: {messageData:messageData}})
     
 }
-
 
 // Exported Functions
 module.exports = {
@@ -373,6 +379,7 @@ module.exports = {
     getCurrentContacts,
     getSuggestedContacts,
     addContact,
+    removeContact,
     createChat,
     getChat,
     updateMessages

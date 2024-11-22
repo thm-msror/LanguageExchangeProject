@@ -57,7 +57,7 @@
                 </button>
                 <a class="header-brand d-md-none" href="#">
                     <svg width="118" height="46" alt="CoreUI Logo">
-                        <use xlink:href="static/assets/brand/coreui.svg#full"></use>
+                        <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-group"></use>
                     </svg>
                 </a>
                 <ul class="header-nav d-none d-md-flex">
@@ -97,7 +97,7 @@
                         <a class="nav-link py-0" data-coreui-toggle="dropdown" href="#" role="button"
                             aria-haspopup="true" aria-expanded="false">
                             <div class="avatar avatar-md"><img class="avatar-img" src="{{profilePhotoPath}}"
-                                    alt="user@email.com"></div>
+                                    alt="{{profilePhotoPath}}"></div>
                         </a>
                         <div class="dropdown-menu dropdown-menu-end pt-0">
                             <a class="dropdown-item" href="/user"> <!-- Add link to profile page -->
@@ -130,16 +130,7 @@
                     </li>
                 </ul>
             </div>
-            <div class="header-divider"></div>
-            <div class="container-fluid">
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb my-0 ms-2">
-                        <li class="breadcrumb-item">
-                            <a href="/user">Profile</a>
-                        </li>
-                    </ol>
-                </nav>
-            </div>
+            
         </header>
 
         <!-- Profile Form -->
@@ -149,7 +140,10 @@
                     <div class="col-md-10">
                         <div class="card mb-4 mx-4">
                             <div class="card-body p-4">
-                                <h1>Welcome back, {{username}}!</h1>
+                                <h1>Welcome {{username}}!</h1>
+                                {{#if error}}
+                                <div class="alert alert-danger">{{error}}</div>
+                                {{/if}}
                                 <br>
                                 {{#if description}}
                                 <!-- Display Profile Information -->
@@ -174,6 +168,8 @@
                                         <textarea name="description" id="description" rows="4" placeholder="Optional"
                                             class="form-control"></textarea>
                                     </div>
+
+                            
 
                                     <div class="mb-3">
                                         <label class="form-label">Fluent Languages:</label>
@@ -218,9 +214,6 @@
                                             <label for="fluentHindi" class="form-check-label">Hindi</label>
                                         </div>
                                     </div>
-                                    {{#if error}}
-                                    <div class="alert alert-danger">{{error}}</div>
-                                    {{/if}}
 
                                     <div class="mb-3">
                                         <label class="form-label">Desired Languages:</label>
@@ -265,9 +258,7 @@
                                             <label for="learnHindi" class="form-check-label">Hindi</label>
                                         </div>
                                     </div>
-                                    {{#if error}}
-                                    <div class="alert alert-danger">{{error}}</div>
-                                    {{/if}}
+
 
                                     <div class="mb-3">
                                         <label for="profilePhoto" class="form-label">Upload Profile Photo:</label>

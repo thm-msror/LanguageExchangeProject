@@ -398,7 +398,7 @@ async function cancelToken(key) {
 // Fetch potential contacts using persistence
 async function getSuggestedContacts(username) {
     const userProfile = await persistence.getUserProfile(username)
-    return await persistence.findPotentialContacts(userProfile.learnLang, username)
+    return await persistence.getSuggestedContacts(userProfile.learnLang, username)
 }
 // Get current contacts
 async function getCurrentContacts(username) {
