@@ -38,6 +38,94 @@
     <link rel="stylesheet" href="/static/css//static/vendors/simplebar.css">
     <!-- Main styles for this application-->
     <link href="/static/css/style.css" rel="stylesheet">
+
+    <style>
+        .profile-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .profile-header img {
+            border-radius: 50%;
+            width: 150px;
+            height: 150px;
+            margin-right: 1rem;
+        }
+
+        .profile-header h1 {
+            margin: 0;
+        }
+
+        .description {
+            margin-bottom: 1rem;
+            border: 1px solid #e2e2e2;
+            border-radius: 5px;
+            padding: 1rem;
+        }
+
+        .description p {
+            font-size: 1.2rem;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            /* Two equal columns */
+            gap: 1rem;
+            /* Space between columns */
+        }
+
+        .left-column,
+        .right-column {
+            padding: 1rem;
+            border: 1px solid #e2e2e2;
+            /* Optional: Add a border for clarity */
+            border-radius: 5px;
+            /* Optional: Rounded corners */
+        }
+
+        .badges {
+            display: flex;
+            /* Use flexbox for layout */
+            justify-content: space-between;
+            /* Space out badges evenly */
+        }
+
+        .badge {
+            display: flex;
+            /* Use flexbox for each badge */
+            flex-direction: column;
+            /* Stack icon and description vertically */
+            align-items: center;
+            /* Center align items */
+            width: 45%;
+            /* Adjust width to fit two badges in a row */
+        }
+
+        .badge img {
+            width: 80px;
+            /* Adjust badge icon size */
+            height: 85px;
+            /* Adjust badge icon size */
+            margin-bottom: 0.5rem;
+            /* Space between icon and description */
+        }
+
+        .badge-description p {
+            text-align: center;
+            /* Center the description text */
+            color: black;
+            font-weight: normal;
+        }
+
+        .badge-description h6 {
+            text-align: center;
+            /* Center the description text */
+            color: black;
+            font-weight: normal;
+        }
+    </style>
 </head>
 
 <body>
@@ -69,13 +157,6 @@
                     </svg> Messages
                 </a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link" href="/badge"> <!-- Add link to messages page -->
-                    <svg class="nav-icon">
-                        <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-badge"></use>
-                    </svg> Badges
-                </a>
-            </li>
         </ul>
         <button class="sidebar-toggler" type="button" data-coreui-toggle="unfoldable"></button>
     </div>
@@ -102,9 +183,6 @@
                 <ul class="header-nav d-none d-md-flex">
                     <li class="nav-item"><a class="nav-link" href="/message">Messages</a></li>
                 </ul>
-                <ul class="header-nav d-none d-md-flex">
-                    <li class="nav-item"><a class="nav-link" href="/badge">Badges</a></li>
-                </ul>
 
                 <ul class="header-nav ms-auto">
                     <li class="nav-item"><a class="nav-link" href="/user"> <!-- Add link to profile page -->
@@ -118,10 +196,6 @@
                     <li class="nav-item"><a class="nav-link" href="/message"> <!-- Add link to messages page -->
                             <svg class="icon icon-lg">
                                 <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-envelope-open"></use>
-                            </svg></a></li>
-                    <li class="nav-item"><a class="nav-link" href="/badge"> <!-- Add link to badges page -->
-                            <svg class="icon icon-lg">
-                                <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-badge"></use>
                             </svg></a></li>
                 </ul>
 
@@ -144,13 +218,9 @@
                                 </svg> Contacts</a>
                             <a class="dropdown-item" href="/message"> <!-- Add link to messages page -->
                                 <svg class="icon me-2">
-                                    <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-envelope-open"></use>
+                                    <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-envelope-open">
+                                    </use>
                                 </svg> Messages
-                            </a>
-                            <a class="dropdown-item" href="/badge"> <!-- Add link to badges page -->
-                                <svg class="icon me-2">
-                                    <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-badge"></use>
-                                </svg> Badges
                             </a>
                             <div class="dropdown-divider"></div>
                             <a class="dropdown-item" href="/logout">
@@ -172,17 +242,56 @@
                     <div class="col-md-10">
                         <div class="card mb-4 mx-4">
                             <div class="card-body p-4">
-                                <!-- Display Contact's Profile Information -->
-                                <h2>Your Contact's Profile</h2>
-                                <p><strong>Description:</strong> {{contactProfile.description}}</p>
-                                <p><strong>Fluent Languages:</strong> <br>{{#each
-                                    contactProfile.fluentLang}}{{this}}<br> {{/each}}</p>
-                                <p><strong>Desired Languages:</strong> <br>{{#each
-                                    contactProfile.learnLang}}{{this}}<br> {{/each}}</p>
-                                {{#if contactProfile.profilePhotoPath}}
-                                <img src="{{contactProfile.profilePhotoPath}}" alt="Profile Photo" class="img-thumbnail"
-                                    style="max-width: 150px;">
-                                {{/if}}
+                                <!-- Display Contact's Profile  -->
+                                <div class="profile-header">
+                                    {{#if contactProfile.profilePhotoPath}}
+                                    <img src="{{contactProfile.profilePhotoPath}}" alt="Profile Photo"
+                                        class="img-thumbnail" style="max-width: 150px;">
+                                    {{/if}}
+                                    <h1>{{contactUsername}}'s Profile</h1>
+                                </div>
+                                <div class="description">
+                                    <h3>Description</h3>
+                                    <p>{{contactProfile.description}}</p>
+                                </div>
+                                <div class="grid-container">
+                                    <div class="left-column">
+                                        <h3>Languages</h3>
+                                        <br>
+                                        <h4>Fluent in</h4>
+                                        <ul>
+                                            {{#each contactProfile.fluentLang}}
+                                            <li>{{this}}</li>
+                                            {{/each}}
+                                        </ul>
+                                        <br>
+                                        <h4>Learning</h4>
+                                        <ul>
+                                            {{#each contactProfile.learnLang}}
+                                            <li>{{this}}</li>
+                                            {{/each}}
+                                        </ul>
+                                    </div>
+                                    <div class="right-column">
+                                        <h3>Badges Earned</h3>
+                                        <div class="badges">
+                                            <div class="badge">
+                                                <img src="/static/assets/img/badges/badge1.jpg" alt="Badge 1">
+                                                <div class="badge-description">
+                                                    <h6>Badge 1 Title</h6>
+                                                    <p>Badge 1 Description</p>
+                                                </div>
+                                            </div>
+                                            <div class="badge">
+                                                <img src="/static/assets/img/badges/badge2.png" alt="Badge 2">
+                                                <div class="badge-description">
+                                                    <h6>Badge 2 Title</h6>
+                                                    <p>Badge 2 Description</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

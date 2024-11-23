@@ -288,7 +288,6 @@ async function resetPassword(resetKey, password) {
     const user = await persistence.getUserByResetKey(resetKey)
 
     if (!user) {
-        console.log("Reset key is invalid or expired:", resetKey)
         return false // Invalid reset key
     }
 
@@ -363,7 +362,6 @@ async function generateToken(key) {
     let sd = await persistence.getSession(key)
     if (sd) {
         const token = crypto.randomBytes(32).toString('hex') // Generate CSRF token
-        console.log("Generated token: ", token)
         sd.csrfToken = token
         await persistence.updateSession(key, sd)
     } else {
@@ -403,9 +401,8 @@ async function cancelToken(key) {
 async function getSuggestedContacts(username) {
     const userProfile = await persistence.getUserProfile(username)
     const suggestedContacts = await persistence.getSuggestedContacts(userProfile.learnLang, username)
-    console.log(suggestedContacts)
     let temp = []
-    for (contact in suggestedContacts) {
+    for (contact of suggestedContacts) {
         if (await isBlockedByUser(username, contact) === false) {
             temp.push(contact)
         }

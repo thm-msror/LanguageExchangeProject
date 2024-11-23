@@ -41,6 +41,7 @@
 </style>
 
 <html lang="en">
+
 <head>
     <base href="./">
     <meta charset="utf-8">
@@ -73,6 +74,7 @@
     <!-- Main styles for this application-->
     <link href="/static/css/style.css" rel="stylesheet">
 </head>
+
 <body>
     <div class="sidebar sidebar-dark sidebar-fixed" id="sidebar">
         <div class="sidebar-brand d-none d-md-flex">
@@ -102,13 +104,6 @@
                     </svg> Messages
                 </a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link" href="/badge">
-                    <svg class="nav-icon">
-                        <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-badge"></use>
-                    </svg> Badges
-                </a>
-            </li>
         </ul>
         <button class="sidebar-toggler" type="button" data-coreui-toggle="unfoldable"></button>
     </div>
@@ -123,7 +118,7 @@
                 </button>
                 <a class="header-brand d-md-none" href="#">
                     <svg width="118" height="46" alt="CoreUI Logo">
-                        <use xlink:href="//static/vendors/@coreui/icons/svg/free.svg#cil-group"></use>
+                        <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-group"></use>
                     </svg>
                 </a>
                 <ul class="header-nav d-none d-md-flex">
@@ -134,9 +129,6 @@
                 </ul>
                 <ul class="header-nav d-none d-md-flex">
                     <li class="nav-item"><a class="nav-link" href="/message">Messages</a></li>
-                </ul>
-                <ul class="header-nav d-none d-md-flex">
-                    <li class="nav-item"><a class="nav-link" href="/badge">Badges</a></li>
                 </ul>
 
                 <ul class="header-nav ms-auto">
@@ -153,10 +145,6 @@
                     <li class="nav-item"><a class="nav-link" href="/message"> <!-- Add link to messages page -->
                             <svg class="icon icon-lg">
                                 <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-envelope-open"></use>
-                            </svg></a></li>
-                    <li class="nav-item"><a class="nav-link" href="/badge"> <!-- Add link to badges page -->
-                            <svg class="icon icon-lg">
-                                <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-badge"></use>
                             </svg></a></li>
                 </ul>
 
@@ -179,13 +167,9 @@
                                 </svg> Contacts</a>
                             <a class="dropdown-item" href="/message"> <!-- Add link to messages page -->
                                 <svg class="icon me-2">
-                                    <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-envelope-open"></use>
+                                    <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-envelope-open">
+                                    </use>
                                 </svg> Messages
-                            </a>
-                            <a class="dropdown-item" href="/badge"> <!-- Add link to badges page -->
-                                <svg class="icon me-2">
-                                    <use xlink:href="/static/vendors/@coreui/icons/svg/free.svg#cil-badge"></use>
-                                </svg> Badges
                             </a>
                             <div class="dropdown-divider"></div>
                             <a class="dropdown-item" href="/logout">
@@ -199,6 +183,11 @@
                 </ul>
             </div>
         </header>
+        <!-- CoreUI and necessary plugins-->
+        <script src="/static/vendors/@coreui/coreui/js/coreui.bundle.min.js"></script>
+        <script src="/static/vendors/simplebar/js/simplebar.min.js"></script>
+        <script>
+        </script>
 
         <!-- Messaging Section -->
         <div class="body flex-grow-1 px-3">
@@ -256,7 +245,8 @@
                         </div>
                         <div class="card-footer">
                             <div class="input-group">
-                                <input type="text" class="form-control" id="message-input" placeholder="Type a message..">
+                                <input type="text" class="form-control" id="message-input"
+                                    placeholder="Type a message..">
                                 <button class="btn btn-primary" id="send-button">Send</button>
                                 <input type="hidden" class="form-control" value="{{csrfToken}}">
                             </div>
@@ -284,6 +274,8 @@
     <!-- CoreUI and necessary plugins-->
     <script src="/static/vendors/@coreui/coreui/js/coreui.bundle.min.js"></script>
     <script src="/static/vendors/simplebar/js/simplebar.min.js"></script>
+    <script>
+    </script>
 </body>
 
 </html>

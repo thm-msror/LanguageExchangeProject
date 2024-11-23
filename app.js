@@ -5,7 +5,6 @@ const bodyParser = require('body-parser')
 const cookieParser = require('cookie-parser')
 const handlebars = require('express-handlebars')
 const fileUpload = require('express-fileupload')
-const { getUserProfile } = require('./persistence.js')
 const defaultProfilePhoto = '/static/assets/img/avatars/default.png'
 
 let app = express()
@@ -47,7 +46,6 @@ async function isSessionExpired(sessionKey) {
     return true //Session is expired or invalid
 }
 
-
 /**
  * Middleware to check for session expiration and redirect to login if expired.
  *
@@ -61,7 +59,7 @@ async function sessionExpirationMiddleware(req, res, next) {
     const sessionKey = req.cookies.sessionKey
     if (!sessionKey || await isSessionExpired(sessionKey)) {
         res.cookie("sessionKey", "", { expires: new Date(Date.now()) }) // Clear expired session cookie
-        return res.render('login', { error: "Your session expired." }) // Redirect to login page if session is expired
+        return res.redirect('/login') // Redirect to login page if session is expired
     }
     next()
 }
@@ -81,7 +79,6 @@ app.get('/', async (req, res) => {
     if (sessionKey) {
         const session = await business.getSession(sessionKey)
         if (session) {
-            console.log("session csrf:", session.csrfToken)
             return res.redirect('/user')
         }
     }
@@ -102,7 +99,6 @@ app.get('/user', sessionExpirationMiddleware, async (req, res) => {
         const username = session.sessionData.username
         const profile = await business.getUserProfile(username)
 
-        console.log("Sending Token: ", session.csrfToken)
         // Passing user details and CSRF token to the template
         res.render('user', {
             username,
@@ -127,11 +123,8 @@ app.post('/user', sessionExpirationMiddleware, fileUpload(), async (req, res) =>
         const profile = business.getUserProfile(username)
         
         const csrfToken = req.body.csrfToken
-        console.log("Body csrf", csrfToken)
 
         // Validating the CSRF token
-        console.log("session csrf: ", session.csrfToken)
-        console.log("current csrf: ", csrfToken)
         const isValidToken = await business.validateToken(sessionKey, csrfToken)
         if (!isValidToken) {
             return res.status(403).render('404', { error: 'Invalid CSRF token.' })
@@ -314,6 +307,7 @@ app.get('/user/:contactUsername', sessionExpirationMiddleware, async (req, res) 
             currentUsername, // Current logged-in user's username
             currentUserProfile, // Current user's profile data
             contactProfile, // Contact's profile data
+            contactUsername, // Contact's username
             profilePhotoPath: currentUserProfile.profilePhotoPath || defaultProfilePhoto, // Default profile photo for current user
         });
 
@@ -399,16 +393,12 @@ app.get("/message/:contactUsername", async (req, res) => {
 
 
         const conversationId = await business.getConversationIdByUsernames(username, contact);
-        console.log(conversationId)
         //const chatHistory = await business.getChatHistory(conversationId)
         const allContacts = await business.getCurrentContacts(username);
         const chatHistory = [
             { senderUsername: 'user1', time: '10:00 AM', message: 'Hello!' },
             { senderUsername: 'user2', time: '10:05 AM', message: 'Hi there!' }
         ]
-        console.log(username, contact)
-        console.log(chatHistory)
-        console.log(allContacts)
 
         res.render("message", {
             profilePhotoPath: userProfile.profilePhotoPath || defaultProfilePhoto,
@@ -418,7 +408,6 @@ app.get("/message/:contactUsername", async (req, res) => {
             messages: chatHistory.length > 0 ? chatHistory : null,
         })
     } catch (error) {
-        console.log(error)
         res.status(500).render('500', { error: 'Failed to load chat' });
     }
 })

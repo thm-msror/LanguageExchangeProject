@@ -25,7 +25,7 @@ let chats = undefined
  */
 async function connectDatabase() {
     if (!client) {
-        client = new mongodb.MongoClient('mongodb+srv://60302181:12class34@cluster0.yrpo2.mongodb.net/?')
+        client = new mongodb.MongoClient('mongodb+srv://tehreemmasroor:12class34@cluster0.1ykuj3l.mongodb.net/')
         await client.connect()
         db = client.db('LanguageExchange')
         users = db.collection('UserAccounts')
@@ -174,16 +174,10 @@ async function updateSession(sessionKey, session) {
     if (!session) {
         throw new Error("Valid session data is required.")
     }
-    console.log("before", session)
-
-
     const result = await sessions.updateOne(
         { key: sessionKey }, // Match the session by its key
         { $set: { csrfToken: session.csrfToken } } // Update the session data
     )
-
-    console.log("after",session)
-
 
     if (result.matchedCount === 0) {
         throw new Error("No session found for the provided session key.")
@@ -303,21 +297,6 @@ async function getUserProfile(username) {
     }
 }
 
-async function getBlockedUsers(username) {
-    await connectDatabase();
-
-    let blockedUsers = await users.findOne({ username })
-    return blockedUsers
-}
-
-async function blockUser(username, blockedUsers) {
-    await connectDatabase();
-
-    await users.updateOne({ username },
-        { $set: { blockedUsers: blockedUsers } })
-}
-
-
 async function getSuggestedContacts(learnLang, username) {
     await connectDatabase();
     return await users.find({
@@ -351,6 +330,23 @@ async function removeContact(username, contactUsername) {
         { contactUsername },
         { $addToSet: { contacts: username } } // Prevent duplicates
     )
+}
+
+async function getBlockedUsers(username) {
+    await connectDatabase();
+
+    let user = await users.findOne({ username })
+    return user.blockedUsers
+}
+
+async function blockUser(username, blockedUsers) {
+    await connectDatabase();
+
+    await users.updateOne(
+        { username },
+        { $set: { blockedUsers: blockedUsers } }
+    )
+    
 }
 
 //Initiation of chat between users
