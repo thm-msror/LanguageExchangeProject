@@ -1,5 +1,10 @@
 // persistence layer
-// Indexes created on the username, email and resetKey fields for optimized querying
+// Indexes:
+// UserAccounts: the username, email and resetKey fields for optimized querying
+// SessionData: 
+// ChatHistory:
+// Badges: 
+// 
 
 const mongodb = require('mongodb')
 
@@ -7,7 +12,10 @@ let client = undefined
 let db = undefined
 let users = undefined
 let sessions = undefined
+let chats = undefined
 
+// tehreem : mongodb+srv://tehreemmasroor:12class34@cluster0.1ykuj3l.mongodb.net/
+// manahil : mongodb+srv://60302181:12class34@cluster0.yrpo2.mongodb.net/?
 
 /**
  * Connects to the MongoDB database and initializes the collections.
@@ -17,7 +25,7 @@ let sessions = undefined
  */
 async function connectDatabase() {
     if (!client) {
-        client = new mongodb.MongoClient('mongodb+srv://tehreemmasroor:12class34@cluster0.1ykuj3l.mongodb.net/')
+        client = new mongodb.MongoClient('mongodb+srv://60302181:12class34@cluster0.yrpo2.mongodb.net/?')
         await client.connect()
         db = client.db('LanguageExchange')
         users = db.collection('UserAccounts')
@@ -39,7 +47,7 @@ async function createUser(userData) {
     const { username, passwordHash, email, verificationToken } = userData
 
     // Insert user into the database with the verification token
-    await users.insertOne({ username, passwordHash, email, verificationToken, emailVerified: false })
+    await users.insertOne({ username, passwordHash, email, verificationToken, emailVerified: false, blockedUsers: [] })
     return await users.findOne({ username })
 }
 
@@ -97,7 +105,7 @@ async function getUserByVerificationToken(token) {
  */
 async function updateUserEmailVerified(username) {
     await connectDatabase()
-    await users.updateOne({ username }, { $set: { emailVerified: true} })
+    await users.updateOne({ username }, { $set: { emailVerified: true } })
 }
 
 
@@ -155,22 +163,27 @@ async function deleteSession(key) {
  * 
  * @async
  * @param {string} sessionKey - The session key to update.
- * @param {Object} sessionData - The new session data.
+ * @param {Object} session - The new session data.
  * @returns {Promise<number>} The number of documents modified (should be 1 if successful, 0 if no session matches).
  * @throws {Error} If the session key or session data is invalid.
  */
-async function updateSession(sessionKey, sessionData) {
+async function updateSession(sessionKey, session) {
     if (!sessionKey) {
         throw new Error("Session key is required.")
     }
-    if (!sessionData || typeof sessionData !== "object") {
+    if (!session) {
         throw new Error("Valid session data is required.")
     }
+    console.log("before", session)
+
 
     const result = await sessions.updateOne(
         { key: sessionKey }, // Match the session by its key
-        { $set: { sessionData: sessionData } } // Update the session data
+        { $set: { csrfToken: session.csrfToken } } // Update the session data
     )
+
+    console.log("after",session)
+
 
     if (result.matchedCount === 0) {
         throw new Error("No session found for the provided session key.")
@@ -201,7 +214,7 @@ async function getUserByEmail(email) {
  * @param {Date} expiry - The expiration time for the reset key.
  * @returns {Promise<void>} Resolves once the reset key and expiry are set.
  */
-async function setResetKey(username, resetkey, expiry) { 
+async function setResetKey(username, resetkey, expiry) {
     await connectDatabase()
     await users.updateOne({ username: username }, { $set: { resetkey: resetkey, resetKeyExpiry: expiry } })
 }
@@ -238,7 +251,7 @@ async function getUserByResetKey(resetKey) {
  */
 async function updatePassword(username, hashedPassword) {
     await connectDatabase()
-    await users.updateOne({ username: username }, { $set: { passwordHash: hashedPassword, resetkey: null, resetKeyExpiry: null} })
+    await users.updateOne({ username: username }, { $set: { passwordHash: hashedPassword, resetkey: null, resetKeyExpiry: null } })
 }
 
 
@@ -293,16 +306,17 @@ async function getUserProfile(username) {
 async function getBlockedUsers(username) {
     await connectDatabase();
 
-    let blockedUsers = await users.findOne({username})
+    let blockedUsers = await users.findOne({ username })
     return blockedUsers
 }
 
 async function blockUser(username, blockedUsers) {
     await connectDatabase();
 
-    await users.updateOne({username}, 
-        {$set: {blockedUsers: blockedUsers}})
+    await users.updateOne({ username },
+        { $set: { blockedUsers: blockedUsers } })
 }
+
 
 async function getSuggestedContacts(learnLang, username) {
     await connectDatabase();
@@ -320,7 +334,6 @@ async function getCurrentContacts(username) {
 
 async function addContact(username, contactUsername) {
     await connectDatabase();
-
     await users.updateOne(
         { username },
         { $addToSet: { contacts: contactUsername } } // Prevent duplicates
@@ -333,6 +346,11 @@ async function removeContact(username, contactUsername) {
         { username },
         { $pull: { contacts: contactUsername } } // Pull removes a matching element
     );
+
+    await users.updateOne(
+        { contactUsername },
+        { $addToSet: { contacts: username } } // Prevent duplicates
+    )
 }
 
 //Initiation of chat between users
@@ -341,20 +359,29 @@ async function createChat(chatData) {
     await chats.insertOne(chatData);
     return
 }
+async function getConversationIdByUsernames(user1, user2) {
+    await connectDatabase();
+    return await chats.findOne({
+        $or: [
+            { user1: user1, user2: user2 },
+            { user1: user2, user2: user1 }
+        ]
+    })
+}
 
 //Get chat 
 async function getChat(conversationId) {
     await connectDatabase();
-    let chatHistory = await chats.findOne({conversationId: conversationId});
+    let chatHistory = await chats.findOne({ conversationId: conversationId });
     return chatHistory;
 }
 
 //update the chats
 async function updateMessages(conversationId, messageData) {
     await connectDatabase();
-    await chats.updateOne({conversationId}, 
-        {$set: {messageData:messageData}})
-    
+    await chats.updateOne({ conversationId },
+        { $set: { messageData: messageData } })
+
 }
 
 // Exported Functions
@@ -381,6 +408,7 @@ module.exports = {
     addContact,
     removeContact,
     createChat,
+    getConversationIdByUsernames,
     getChat,
     updateMessages
 }

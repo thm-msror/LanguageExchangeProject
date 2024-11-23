@@ -4,16 +4,24 @@ const business = require('./business.js')
 const bodyParser = require('body-parser')
 const cookieParser = require('cookie-parser')
 const handlebars = require('express-handlebars')
-const flash = require('./flash.js')
 const fileUpload = require('express-fileupload')
+const { getUserProfile } = require('./persistence.js')
 const defaultProfilePhoto = '/static/assets/img/avatars/default.png'
 
 let app = express()
 
 // Set up Handlebars
+
+// Helper function for comparing two values in if statements
+const hbs = handlebars.create({
+    helpers: { eq: (a, b) => a === b, },
+    extname: '.handlebars'
+})
+
 app.set('views', __dirname + "/templates")
 app.set('view engine', 'handlebars')
-app.engine('handlebars', handlebars.engine())
+app.engine('handlebars', hbs.engine)
+
 
 // Middleware for parsing form data
 app.use(bodyParser.urlencoded({ extended: false }))
@@ -52,8 +60,8 @@ async function isSessionExpired(sessionKey) {
 async function sessionExpirationMiddleware(req, res, next) {
     const sessionKey = req.cookies.sessionKey
     if (!sessionKey || await isSessionExpired(sessionKey)) {
-        res.cookie("sessionKey", "", {expires: new Date(Date.now())}) // Clear expired session cookie
-        return res.render('login', {error: "Your session expired."}) // Redirect to login page if session is expired
+        res.cookie("sessionKey", "", { expires: new Date(Date.now()) }) // Clear expired session cookie
+        return res.render('login', { error: "Your session expired." }) // Redirect to login page if session is expired
     }
     next()
 }
@@ -73,10 +81,11 @@ app.get('/', async (req, res) => {
     if (sessionKey) {
         const session = await business.getSession(sessionKey)
         if (session) {
-            // Redirect to personalized user page if logged in
+            console.log("session csrf:", session.csrfToken)
             return res.redirect('/user')
         }
     }
+
     res.render('login', { message: message })
 })
 
@@ -84,19 +93,20 @@ app.get('/', async (req, res) => {
 app.get('/user', sessionExpirationMiddleware, async (req, res) => {
     try {
         const sessionKey = req.cookies.sessionKey
-        const session = await business.getSession(sessionKey)
+        // Generating the CSRF token if submission of form is required
+        await business.generateToken(sessionKey)
 
+        const session = await business.getSession(sessionKey)
         // sessionExpirationMiddleware checks if the session is valid and redirects to login if not
 
         const username = session.sessionData.username
-
-        // Fetch user profile
         const profile = await business.getUserProfile(username)
 
-        // Pass user details and CSRF token to the template
+        console.log("Sending Token: ", session.csrfToken)
+        // Passing user details and CSRF token to the template
         res.render('user', {
             username,
-            csrfToken: session.csrfToken, // Use the CSRF token from session
+            csrfToken: session.csrfToken,
             description: profile.description,
             fluentLang: profile.fluentLang,
             learnLang: profile.learnLang,
@@ -111,18 +121,24 @@ app.get('/user', sessionExpirationMiddleware, async (req, res) => {
 app.post('/user', sessionExpirationMiddleware, fileUpload(), async (req, res) => {
     try {
         const sessionKey = req.cookies.sessionKey
-        const session = await business.getSession(sessionKey)
-
-        // sessionExpirationMiddleware checks if the session is valid and redirects to login if not
+        let session = await business.getSession(sessionKey)
 
         const username = session.sessionData.username
+        const profile = business.getUserProfile(username)
+        
         const csrfToken = req.body.csrfToken
+        console.log("Body csrf", csrfToken)
 
-        // Validate CSRF token
+        // Validating the CSRF token
+        console.log("session csrf: ", session.csrfToken)
+        console.log("current csrf: ", csrfToken)
         const isValidToken = await business.validateToken(sessionKey, csrfToken)
         if (!isValidToken) {
             return res.status(403).render('404', { error: 'Invalid CSRF token.' })
         }
+        // Cancelling the CSRF token imeediately after use
+        await business.cancelToken(sessionKey)
+
 
         // Normalize form data
         const description = req.body.description || null
@@ -142,10 +158,35 @@ app.post('/user', sessionExpirationMiddleware, fileUpload(), async (req, res) =>
         }
 
         if (!fluentLang || fluentLang.length < 1 || fluentLang.length > 5) {
-            return res.render('user', { error: "Select 1 to 5 fluent languages." })
+            // Generating the CSRF token if submission of form is required
+            await business.generateToken(sessionKey)
+            // Getting updated session data
+            session = await business.getSession(sessionKey)
+
+            return res.render('user', {
+                error: "Select 1 to 5 fluent languages.",
+                username,
+                csrfToken: session.csrfToken,
+                description: profile.description,
+                fluentLang: profile.fluentLang,
+                learnLang: profile.learnLang,
+                profilePhotoPath: profile.profilePhotoPath || defaultProfilePhoto,
+            })
         }
         if (!learnLang || learnLang.length < 1 || learnLang.length > 5) {
-            return res.render('user', { error: "Select 1 to 5 languages you want to learn." })
+            // Generating the CSRF token if submission of form is required
+            await business.generateToken(sessionKey)
+            session = await business.getSession(sessionKey)
+
+            return res.render('user', {
+                error: "Select 1 to 5 languages you want to learn.",
+                username,
+                csrfToken: session.csrfToken,
+                description: profile.description,
+                fluentLang: profile.fluentLang,
+                learnLang: profile.learnLang,
+                profilePhotoPath: profile.profilePhotoPath || defaultProfilePhoto,
+            })
         }
 
 
@@ -169,14 +210,239 @@ app.post('/user', sessionExpirationMiddleware, fileUpload(), async (req, res) =>
         // Redirect to GET /user to display the updated profile
         res.redirect('/user')
 
-        await business.cancelToken(sessionKey) // Cancel the CSRF token after use
-
     } catch (error) {
         console.error("Error updating profile:", error)
         res.status(500).render('500', { error: 'Failed to update profile. Please try again later.' })
     }
 })
 
+
+//Contact page functionality 
+
+// Route to render the contact page
+app.get('/contact', sessionExpirationMiddleware, async (req, res) => {
+    const sessionKey = req.cookies.sessionKey;
+    const session = await business.getSession(sessionKey);
+
+    // We assume the session is valid due to the sessionExpirationMiddleware
+    const username = session.sessionData.username;
+
+    // Use business layer to get user profile
+    const profile = await business.getUserProfile(username);
+
+    res.render('contact', { profilePhotoPath: profile.profilePhotoPath || defaultProfilePhoto });
+});
+
+// Fetch suggested contacts
+app.get('/api/contacts/suggested', sessionExpirationMiddleware, async (req, res) => {
+    try {
+        const sessionKey = req.cookies.sessionKey;
+        const session = await business.getSession(sessionKey);
+
+        const username = session.sessionData.username;
+
+        // Fetch logged-in user and their suggested contacts via business layer
+        const suggestedContacts = await business.getSuggestedContacts(username);
+
+        res.json(suggestedContacts);
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to fetch suggested contacts' });
+    }
+});
+
+// Add contact
+app.post('/api/contacts/add', sessionExpirationMiddleware, async (req, res) => {
+    try {
+        const sessionKey = req.cookies.sessionKey;
+        const session = await business.getSession(sessionKey);
+
+        const username = session.sessionData.username;
+        const contactUsername = req.body.contactUsername
+
+        // Add contact using the business layer
+        await business.addContact(username, contactUsername);
+
+        res.sendStatus(200);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to add contact' });
+    }
+});
+
+// Fetch current contacts
+app.get('/api/contacts/current', sessionExpirationMiddleware, async (req, res) => {
+    try {
+        const sessionKey = req.cookies.sessionKey;
+        const session = await business.getSession(sessionKey);
+
+        const username = session.sessionData.username;
+        // Fetch current contacts via business layer
+        const currentContacts = await business.getCurrentContacts(username);
+
+        res.json(currentContacts);
+
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to fetch current contacts' });
+    }
+});
+
+app.get('/user/:contactUsername', sessionExpirationMiddleware, async (req, res) => {
+    try {
+        const contactUsername = req.params.contactUsername; // Get the contact username from the URL parameters
+        const sessionKey = req.cookies.sessionKey; // Get the session key from cookies
+        const session = await business.getSession(sessionKey); // Fetch the session from the business layer
+
+        const currentUsername = session.sessionData.username; // Get the current logged-in username
+
+        // Fetch the profile of the logged-in user
+        const currentUserProfile = await business.getUserProfile(currentUsername);
+
+        // Fetch the profile of the contact user
+        const contactProfile = await business.getUserProfile(contactUsername);
+
+        // Check if the contact profile exists
+        if (!contactProfile) {
+            return res.render('404', { error: "User  not found." });
+        }
+
+        // Render the user profile page with both the logged-in user's and the contact's information
+        res.render('contactprofile', {
+            currentUsername, // Current logged-in user's username
+            currentUserProfile, // Current user's profile data
+            contactProfile, // Contact's profile data
+            profilePhotoPath: currentUserProfile.profilePhotoPath || defaultProfilePhoto, // Default profile photo for current user
+        });
+
+    } catch (error) {
+        console.error('Error loading user profile:', error);
+        res.status(500).render('500', { error: 'Failed to load profile. Please try again later.' });
+    }
+});
+
+// Remove contact
+app.delete('/api/contacts/remove/:contactUsername', sessionExpirationMiddleware, async (req, res) => {
+    try {
+        const sessionKey = req.cookies.sessionKey;
+        const session = await business.getSession(sessionKey);
+
+        const username = session.sessionData.username;
+        const { contactUsername } = req.params;
+
+        // Remove contact using the business layer
+        await business.removeContact(username, contactUsername);
+
+        res.sendStatus(200);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to remove contact' });
+    }
+});
+
+
+// Block contact
+app.delete('/api/contacts/block/:contactUsername', sessionExpirationMiddleware, async (req, res) => {
+    try {
+        const sessionKey = req.cookies.sessionKey;
+        const session = await business.getSession(sessionKey);
+
+        const username = session.sessionData.username;
+        const { contactUsername } = req.params;
+
+        // block contact using the business layer
+        await business.blockUser(username, contactUsername);
+
+        res.sendStatus(200);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to remove contact' });
+    }
+});
+
+// Route to render the message page
+app.get('/message', sessionExpirationMiddleware, async (req, res) => {
+    try {
+        const sessionKey = req.cookies.sessionKey
+        const session = await business.getSession(sessionKey)
+
+        const username = session.sessionData.username
+        const profile = await business.getUserProfile(username)
+        const contacts = await business.getCurrentContacts(username)
+
+        await business.generateToken(sessionKey);
+
+        res.render('message', {
+            profilePhotoPath: profile.profilePhotoPath || defaultProfilePhoto,
+            username,
+            contacts,
+            crsfToken: session.crsfToken
+        })
+    } catch (error) {
+        console.error(error);
+        res.status(500).render('500', { error: 'Failed to load messages page' });
+    }
+})
+
+
+app.get("/message/:contactUsername", async (req, res) => {
+    try {
+        const sessionKey = req.cookies.sessionKey
+        const session = await business.getSession(sessionKey)
+
+        const username = session.sessionData.username
+        const userProfile = await business.getUserProfile(username);
+
+        const contact = req.params.contactUsername;
+
+
+        const conversationId = await business.getConversationIdByUsernames(username, contact);
+        console.log(conversationId)
+        //const chatHistory = await business.getChatHistory(conversationId)
+        const allContacts = await business.getCurrentContacts(username);
+        const chatHistory = [
+            { senderUsername: 'user1', time: '10:00 AM', message: 'Hello!' },
+            { senderUsername: 'user2', time: '10:05 AM', message: 'Hi there!' }
+        ]
+        console.log(username, contact)
+        console.log(chatHistory)
+        console.log(allContacts)
+
+        res.render("message", {
+            profilePhotoPath: userProfile.profilePhotoPath || defaultProfilePhoto,
+            username: username,
+            contacts: allContacts,
+            contactUsername: contact,
+            messages: chatHistory.length > 0 ? chatHistory : null,
+        })
+    } catch (error) {
+        console.log(error)
+        res.status(500).render('500', { error: 'Failed to load chat' });
+    }
+})
+
+
+app.post("/message/:contactUsername", async (req, res) => {
+    const sessionKey = req.cookies.sessionKey
+    const session = await business.getSession(sessionKey)
+
+    const username = session.sessionData.username
+    const contact = req.params.contactUsername;
+
+
+})
+
+// Route to render the badge page
+app.get('/badge', sessionExpirationMiddleware, async (req, res) => {
+    const sessionKey = req.cookies.sessionKey
+    const session = await business.getSession(sessionKey)
+
+    const username = session.sessionData.username
+    const profile = await business.getUserProfile(username)
+    res.render('badge', { profilePhotoPath: profile.profilePhotoPath || defaultProfilePhoto })
+})
 
 /**
  * Route handler for rendering the registration page.
@@ -279,7 +545,7 @@ app.get('/logout', async (req, res) => {
         await business.logoutUser(sessionKey)
 
         // Clear the session cookie from the client
-        res.cookie("sessionKey", "", {expires: new Date(Date.now())}) // Clear and expire session cookie
+        res.cookie("sessionKey", "", { expires: new Date(Date.now()) }) // Clear and expire session cookie
     }
 
     // Redirect to the login page
@@ -422,164 +688,6 @@ app.post('/reset-password', async (req, res) => {
     }
 
 })
-
-//Contact page functionality 
-
-// Route to render the contact page
-app.get('/contact', sessionExpirationMiddleware, async (req, res) => {
-    const sessionKey = req.cookies.sessionKey;
-    const session = await business.getSession(sessionKey);
-
-    // We assume the session is valid due to the sessionExpirationMiddleware
-    const username = session.sessionData.username;
-
-    // Use business layer to get user profile
-    const profile = await business.getUserProfile(username);
-
-    res.render('contact', { profilePhotoPath: profile.profilePhotoPath || defaultProfilePhoto });
-});
-
-// Fetch suggested contacts
-app.get('/api/contacts/suggested', sessionExpirationMiddleware, async (req, res) => {
-    try {
-        const sessionKey = req.cookies.sessionKey;
-        const session = await business.getSession(sessionKey);
-
-        const username = session.sessionData.username;
-
-        // Fetch logged-in user and their suggested contacts via business layer
-        const suggestedContacts = await business.getSuggestedContacts(username);
-
-        res.json(suggestedContacts);
-
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Failed to fetch suggested contacts' });
-    }
-});
-
-// Add contact
-app.post('/api/contacts/add', sessionExpirationMiddleware, async (req, res) => {
-    try {
-        const sessionKey = req.cookies.sessionKey;
-        const session = await business.getSession(sessionKey);
-
-        const username = session.sessionData.username;
-        const contactUsername = req.body.contactUsername
-
-        // Add contact using the business layer
-        await business.addContact(username, contactUsername);
-
-        res.sendStatus(200);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Failed to add contact' });
-    }
-});
-
-// Fetch current contacts
-app.get('/api/contacts/current', sessionExpirationMiddleware, async (req, res) => {
-    try {
-        const sessionKey = req.cookies.sessionKey;
-        const session = await business.getSession(sessionKey);
-
-        const username = session.sessionData.username;
-        // Fetch current contacts via business layer
-        const currentContacts = await business.getCurrentContacts(username);
-
-        res.json(currentContacts);
-
-
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Failed to fetch current contacts' });
-    }
-});
-
-app.get('/user/:contactUsername', sessionExpirationMiddleware, async (req, res) => {
-    try {
-        const contactUsername = req.params.contactUsername; // Get the contact username from the URL parameters
-        const sessionKey = req.cookies.sessionKey; // Get the session key from cookies
-        const session = await business.getSession(sessionKey); // Fetch the session from the business layer
-
-        const currentUsername = session.sessionData.username; // Get the current logged-in username
-
-        // Fetch the profile of the logged-in user
-        const currentUserProfile = await business.getUserProfile(currentUsername);
-        
-        // Fetch the profile of the contact user
-        const contactProfile = await business.getUserProfile(contactUsername);
-
-        // Check if the contact profile exists
-        if (!contactProfile) {
-            return res.render('404', { error: "User  not found." });
-        }
-
-        // Render the user profile page with both the logged-in user's and the contact's information
-        res.render('contactprofile', {
-            currentUsername, // Current logged-in user's username
-            currentUserProfile, // Current user's profile data
-            contactProfile, // Contact's profile data
-            profilePhotoPath: currentUserProfile.profilePhotoPath || defaultProfilePhoto, // Default profile photo for current user
-        });
-
-    } catch (error) {
-        console.error('Error loading user profile:', error);
-        res.status(500).render('500', { error: 'Failed to load profile. Please try again later.' });
-    }
-});
-
-// Remove contact
-app.delete('/api/contacts/remove/:contactUsername', sessionExpirationMiddleware, async (req, res) => {
-    try {
-        const sessionKey = req.cookies.sessionKey;
-        const session = await business.getSession(sessionKey);
-
-        const username = session.sessionData.username;
-        const { contactUsername} = req.params;
-
-        // Remove contact using the business layer
-        await business.removeContact(username, contactUsername);
-
-        res.sendStatus(200);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Failed to remove contact' });
-    }
-});
-
-
-// Route to render the message page
-app.get('/message', sessionExpirationMiddleware, async (req, res) => {
-    const sessionKey = req.cookies.sessionKey
-    const session = await business.getSession(sessionKey)
-
-    const username = session.sessionData.username
-    const profile = await business.getUserProfile(username)
-    res.render('message', { profilePhotoPath: profile.profilePhotoPath || defaultProfilePhoto })
-})
-
-
-app.post("/message/:contactUsername", async (req, res) => {
-    const sessionKey = req.cookies.sessionKey
-    const session = await business.getSession(sessionKey)
-
-    const username = session.sessionData.username
-    const contact = req.params.contactUsername;
-
-    res.send("send message")
-})
-
-// Route to render the badge page
-app.get('/badge', sessionExpirationMiddleware, async (req, res) => {
-    const sessionKey = req.cookies.sessionKey
-    const session = await business.getSession(sessionKey)
-
-    const username = session.sessionData.username
-    const profile = await business.getUserProfile(username)
-    res.render('badge', { profilePhotoPath: profile.profilePhotoPath || defaultProfilePhoto })
-})
-
 
 
 app.get('/404', async (req, res) => {

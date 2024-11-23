@@ -16,28 +16,28 @@
         </div>
         <ul class="sidebar-nav" data-coreui="navigation" data-simplebar="">
             <li class="nav-item">
-                <a class="nav-link" href="/user"> <!-- Add link to profile page -->
+                <a class="nav-link" href="/user"> <!-- link to profile page -->
                     <svg class="nav-icon">
                         <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-user"></use>
                     </svg> Profile
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" href="/contact"> <!-- Add link to contact page -->
+                <a class="nav-link" href="/contact"> <!-- link to contact page -->
                     <svg class="nav-icon">
                         <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-address-book"></use>
                     </svg> Contacts
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" href="/message"> <!-- Add link to messages page -->
+                <a class="nav-link" href="/message"> <!-- link to messages page -->
                     <svg class="nav-icon">
                         <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-envelope-open"></use>
                     </svg> Messages
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" href="/badge"> <!-- Add link to messages page -->
+                <a class="nav-link" href="/badge"> <!-- link to badges page -->
                     <svg class="nav-icon">
                         <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-badge"></use>
                     </svg> Badges
@@ -74,19 +74,19 @@
                 </ul>
 
                 <ul class="header-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link" href="/user"> <!-- Add link to profile page -->
+                    <li class="nav-item"><a class="nav-link" href="/user"> <!-- link to profile page -->
                             <svg class="icon icon-lg">
                                 <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-user"></use>
                             </svg></a></li>
-                    <li class="nav-item"><a class="nav-link" href="/contact"> <!-- Add link to contact page -->
+                    <li class="nav-item"><a class="nav-link" href="/contact"> <!-- link to contact page -->
                             <svg class="icon icon-lg">
                                 <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-address-book"></use>
                             </svg></a></li>
-                    <li class="nav-item"><a class="nav-link" href="/message"> <!-- Add link to messages page -->
+                    <li class="nav-item"><a class="nav-link" href="/message"> <!-- link to messages page -->
                             <svg class="icon icon-lg">
                                 <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-envelope-open"></use>
                             </svg></a></li>
-                    <li class="nav-item"><a class="nav-link" href="/badge"> <!-- Add link to badges page -->
+                    <li class="nav-item"><a class="nav-link" href="/badge"> <!-- link to badges page -->
                             <svg class="icon icon-lg">
                                 <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-badge"></use>
                             </svg></a></li>
@@ -100,21 +100,21 @@
                                     alt="{{profilePhotoPath}}"></div>
                         </a>
                         <div class="dropdown-menu dropdown-menu-end pt-0">
-                            <a class="dropdown-item" href="/user"> <!-- Add link to profile page -->
+                            <a class="dropdown-item" href="/user"> <!-- link to profile page -->
                                 <svg class="icon me-2">
                                     <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-user"></use>
                                 </svg> Profile
                             </a>
-                            <a class="dropdown-item" href="/contact"> <!-- Add link to contact page -->
+                            <a class="dropdown-item" href="/contact"> <!-- link to contact page -->
                                 <svg class="icon me-2">
                                     <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-address-book"></use>
                                 </svg> Contacts</a>
-                            <a class="dropdown-item" href="/message"> <!-- Add link to messages page -->
+                            <a class="dropdown-item" href="/message"> <!-- link to messages page -->
                                 <svg class="icon me-2">
                                     <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-envelope-open"></use>
                                 </svg> Messages
                             </a>
-                            <a class="dropdown-item" href="/badge"> <!-- Add link to badges page -->
+                            <a class="dropdown-item" href="/badge"> <!-- link to badges page -->
                                 <svg class="icon me-2">
                                     <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-badge"></use>
                                 </svg> Badges
@@ -145,7 +145,7 @@
                                 <div class="alert alert-danger">{{error}}</div>
                                 {{/if}}
                                 <br>
-                                {{#if description}}
+                                {{#if fluentLang }}
                                 <!-- Display Profile Information -->
                                 <h2>Your Profile</h2>
                                 <p><strong>Description:</strong> {{description}}</p>
@@ -156,8 +156,6 @@
                                     style="max-width: 150px;">
                                 {{/if}}
                                 {{else}}
-
-
                                 <!-- Profile Form -->
                                 <form action="/user" method="POST" enctype="multipart/form-data">
 

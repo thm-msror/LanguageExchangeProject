@@ -67,7 +67,6 @@ async function loginUser(username, password) {
 
         // Create or start a new session
         const sessionKey = generateSessionKey()
-        const csrfToken = crypto.randomBytes(32).toString('hex') // Generate CSRF token
         const expiry = new Date(Date.now() + 10 * 60 * 1000) // 10-minute expiry
 
         await persistence.saveSession({
@@ -77,14 +76,14 @@ async function loginUser(username, password) {
                 userId: user._id.toString(), // Store the ObjectId as a string
                 username: user.username,
             },
-            csrfToken: csrfToken
         })
 
-        return { sessionKey, user}
+        return { sessionKey, user }
     } catch (error) {
         throw error
     }
 }
+
 
 /**
  * Retrieves the session data for a given session key.
@@ -176,7 +175,7 @@ async function registerUser(username, email, password, repeatPassword) {
         })
 
         await logVerificationEmail(email, verificationToken)
-        
+
 
         return await persistence.getUserDetails(username)
     } catch (error) {
@@ -352,24 +351,28 @@ async function getUserProfile(username) {
     return await persistence.getUserProfile(username)
 }
 
+
 /**
  * Retrieves the CSRF token for a given session key.
  *
  * @async
  * @param {string} key - The session key to retrieve the CSRF token for.
- * @returns {Promise<string>} The CSRF token stored in the session.
+ * @returns {Promise<void>} Resolves after the CSRF token is created.
  */
-async function getToken(key) {
+async function generateToken(key) {
     let sd = await persistence.getSession(key)
     if (sd) {
+        const token = crypto.randomBytes(32).toString('hex') // Generate CSRF token
+        console.log("Generated token: ", token)
         sd.csrfToken = token
+        await persistence.updateSession(key, sd)
     } else {
-        console.error("sd is null or undefined")
-    }    
+       throw new Error("Invalid Session key")
+    }
 }
 
 /**
- * Validates a CSRF token.
+ * Validates a CSRF token and deletes it.
  *
  * @param {string} sessionKey - The session key.
  * @param {string} csrfToken - The CSRF token.
@@ -377,7 +380,8 @@ async function getToken(key) {
  */
 async function validateToken(sessionKey, csrfToken) {
     const session = await persistence.getSession(sessionKey)
-    return session && session.csrfToken === csrfToken
+    const token = session.csrfToken;
+    return session && token === csrfToken
 }
 
 /**
@@ -398,7 +402,15 @@ async function cancelToken(key) {
 // Fetch potential contacts using persistence
 async function getSuggestedContacts(username) {
     const userProfile = await persistence.getUserProfile(username)
-    return await persistence.getSuggestedContacts(userProfile.learnLang, username)
+    const suggestedContacts = await persistence.getSuggestedContacts(userProfile.learnLang, username)
+    console.log(suggestedContacts)
+    let temp = []
+    for (contact in suggestedContacts) {
+        if (await isBlockedByUser(username, contact) === false) {
+            temp.push(contact)
+        }
+    }
+    return temp
 }
 // Get current contacts
 async function getCurrentContacts(username) {
@@ -408,15 +420,12 @@ async function getCurrentContacts(username) {
 // Add contact using persistence
 async function addContact(username, contactUsername) {
     await persistence.addContact(username, contactUsername)
+    await createChat(username, contactUsername)
 }
 
 // Remove contact using persistence
 async function removeContact(username, contactUsername) {
     await persistence.removeContact(username, contactUsername)
-}
-
-async function getBlockedUsers(username) {
-    return await persistence.getBlockedUsers(username);
 }
 
 async function blockUser(username, blockUsername) {
@@ -428,35 +437,52 @@ async function blockUser(username, blockUsername) {
     }
 
     let blockedUsers = await persistence.getBlockedUsers(username);
-    if(!blockedUsers) {
-        blockedUsers = [blockUsername];
-    } else {
-        blockedUsers.push(blockUsername);
-    }
+
+    blockedUsers.push(blockUsername);
 
     await persistence.blockUser(username, blockedUsers);
+    await persistence.removeContact(username, blockUsername)
+}
+
+async function isBlockedByUser(username, contact) {
+    let blockedUsers = await persistence.getBlockedUsers(username, contact)
+    if (!blockedUsers) {
+        return true
+    }
+    for (user in blockedUsers) {
+        if (contact === user ) {
+            return true
+        }
+    }
+    return false
 }
 
 // Store a message sent by the current user
-async function createChat(currentUser, contactUser, message) { 
-    if (!currentUser || !contactUser || !message ) {
-        throw new Error("Could not store message");
-    }
-
-    let messageData = {
-        time: new Date(Date.now()),
-        message: message,
-        sender: currentUser
+async function createChat(currentUser, contactUser) {
+    if (!currentUser || !contactUser) {
+        throw new Error("User(s) not specified");
     }
 
     let chatData = {
         conversationId: crypto.randomUUID(),
         user1: currentUser,
         user2: contactUser,
-        messageData: [messageData]
+        messageData: []
     }
 
     return await persistence.createChat(chatData);
+}
+
+async function getConversationIdByUsernames(user1, user2) {
+    if (!user1 || !user2) {
+        throw new Error("User(s) not specified")
+    }
+    let conversation = await persistence.getConversationIdByUsernames(user1, user2)
+    if (!conversation) {
+        throw new Error("Conversation not found")
+    }
+
+    return conversation.conversationId
 }
 
 async function getChatHistory(conversationId) {
@@ -467,8 +493,21 @@ async function getChatHistory(conversationId) {
     return await persistence.getChat(conversationId);
 }
 
+// Store a message sent by the current user
+async function updateMessages(conversationId, senderUsername, message) {
+    if (!conversationId) {
+        throw new Error("No conversation specified")
+    }
 
-async function updateMessages(conversationId, message) {
+    let chatHistory = await persistence.getChat(conversationId);
+    let newMessage = {
+        time: new Date(Date.now()),
+        message: message,
+        sender: senderUsername
+    }
+
+    chatHistory.messageData.push(newMessage)
+
     return await persistence.updateMessages(conversationId, message)
 }
 
@@ -485,16 +524,17 @@ module.exports = {
     logoutUser,
     getUserProfile,
     saveUserProfile,
-    getToken,
+    generateToken,
     validateToken,
     cancelToken,
     blockUser,
+    isBlockedByUser,
     getSuggestedContacts,
     getCurrentContacts,
     addContact,
     removeContact,
     createChat,
+    getConversationIdByUsernames,
     getChatHistory,
-    updateMessages,
-    getBlockedUsers
+    updateMessages
 }

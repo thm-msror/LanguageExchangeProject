@@ -1,3 +1,95 @@
+<style>
+    .chat-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  /* Ensures the container stretches to fill available height */
+  border: 1px solid #ddd;
+  /* Optional: to visually separate the chat section */
+  border-radius: 5px;
+}
+
+/* Ensure chat history occupies all remaining space within the chat container */
+.chat-history {
+  flex-grow: 1;
+  /* Fills the available space */
+  overflow-y: auto;
+  /* Allows scrolling if content exceeds the container height */
+  display: flex;
+  flex-direction: column-reverse;
+  /* Ensures messages stack from the bottom */
+  padding: 10px;
+}
+
+/* Optional: Add padding or other styling for an empty chat */
+.chat-history:empty::before {
+  content: "No messages yet. Start a conversation!";
+  color: #999;
+  font-style: italic;
+  text-align: center;
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
+.message-bubble {
+  max-width: 60%;
+  padding: 10px;
+  margin: 5px;
+  border-radius: 15px;
+  word-wrap: break-word;
+}
+
+.outgoing {
+  background-color: #007bff;
+  color: white;
+  text-align: right;
+  border-radius: 15px 15px 0 15px;
+}
+
+.incoming {
+  background-color: #f1f1f1;
+  color: black;
+  text-align: left;
+  border-radius: 15px 15px 15px 0;
+}
+
+.contact-item {
+  transition: background-color 0.3s ease;
+  cursor: pointer;
+}
+
+.contact-item:hover {
+  background-color: #f8f9fa;
+  /* Light gray background on hover */
+}
+
+.chat-input {
+  display: flex;
+  margin-top: 10px;
+}
+
+.chat-input input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.chat-input button {
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  margin-left: 5px;
+}
+
+.chat-history {
+  max-height: 400px;
+  overflow-y: auto;
+}
+</style>
+
 <!DOCTYPE html><!--
 * CoreUI - Free Bootstrap Admin Template
 * @version v4.2.2
@@ -187,6 +279,7 @@
                             <img src="${contact.profilePhotoPath}" alt="${contact.username}" class="avatar me-2"> 
                             <strong class="me-2">${contact.username}</strong> 
                             <button class="btn btn-success btn-sm ms-3" onclick="addContact('${contact.username}')">Add</button>
+                            <button class="btn btn-danger btn-sm ms-3" onclick="blockContact('${contact.username}')">Block</button>
                         </div>
                         `).join('');
 
@@ -199,6 +292,8 @@
                                 <img src="${contact.profilePhotoPath}" alt="${contact.username}" class="avatar me-2"> 
                                 <a href="/user/${contact.username}" class="me-2" style="color: inherit; text-decoration: none;"><strong>${contact.username}</strong></a>
                                 <button class="btn btn-danger btn-sm ms-3" onclick="removeContact('${contact.username}')">Remove</button>
+                                <button class="btn btn-danger btn-sm ms-3" onclick="blockContact('${contact.username}')">Block</button>
+                                
                             </div>
                         `).join('');
 
@@ -241,6 +336,21 @@
                     }
                 } catch (error) {
                     console.error('Error removing contact:', error);
+                }
+            }
+
+            async function blockContact(contactUsername) {
+                 try {
+                    const response = await fetch(`/api/contacts/block/${contactUsername}`, { method: 'DELETE' });
+
+                    if (response.ok) {
+                        // Re-fetch contacts to update the UI after removing
+                        fetchContacts();
+                    } else {
+                        console.error('Failed to block contact:', await response.text());
+                    }
+                } catch (error) {
+                    console.error('Error blocking contact:', error);
                 }
             }
 
