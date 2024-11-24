@@ -389,8 +389,13 @@
             }
 
             async function blockContact(contactUsername) {
-                try {
-                    const response = await fetch(`/api/contacts/block/${contactUsername}`, { method: 'DELETE' });
+                 try {
+                    console.log(contactUsername)
+                    const response = await fetch(`/api/contacts/block/${contactUsername}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contactUsername }),
+                    });
 
                     if (response.ok) {
                         // Re-fetch contacts to update the UI after removing

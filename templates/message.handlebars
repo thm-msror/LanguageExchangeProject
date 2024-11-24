@@ -7,36 +7,162 @@
 -->
 
 <style>
+    .wrapper {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+    }
+
+    .body {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+
+    }
+
+    .chat-body {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 15px;
+    }
+
+    .container-lg {
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+    }
+
+    .col-md-8,
+    .card {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    .chat-container {
+        flex-grow: 1;
+        /* Stretch to fill available height */
+        display: flex;
+        flex-direction: column;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        overflow: hidden;
+        background-color: #fff;
+
+    }
+
+    .chat-history {
+        flex-grow: 1;
+        overflow-y: auto;
+        max-height: 400px;
+        min-height: 400px;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+
+    }
+
+    .chat-input {
+        display: flex;
+        padding: 10px;
+        border-top: 1px solid #ddd;
+        background-color: #f8f9fa;
+        margin-bottom: 0%;
+        padding-bottom: 0%;
+    }
+
+    .chat-input input {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 7px;
+    }
+
+    .chat-input button {
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 7px;
+        margin-left: 5px;
+    }
+
+    #chat-header {
+        display: flex;
+        align-items: center;
+        /* Vertically align items within the header */
+        padding: 10px;
+        /* Add consistent padding */
+    }
+
+    #chat-header .avatar img {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        /* Make sure the image is circular */
+    }
+
+    #chat-header h5 {
+        margin: 0;
+        color: white;
+        font-weight: bold;
+    }
+
     .message-bubble {
         max-width: 60%;
-        padding: 10px;
+        padding-top: 15px;  
+        padding-bottom: 15px;
+        padding-left: 20px;
+        padding-right: 20px;
         margin: 5px;
         border-radius: 15px;
         word-wrap: break-word;
     }
 
     .outgoing {
-        background-color: #007bff;
-        color: white;
+        background-color: #d4c2f0;
+        color: #2e0849;
         text-align: right;
+        margin-right: 0%;
         border-radius: 15px 15px 0 15px;
     }
 
     .incoming {
-        background-color: #f1f1f1;
-        color: black;
+        background-color: #e2effc;
+        color: #082349;
         text-align: left;
+        margin-left: 0%;
         border-radius: 15px 15px 15px 0;
-    }
+    } 
 
     .contact-item {
         transition: background-color 0.3s ease;
         cursor: pointer;
+        color: rgb(0, 17, 70);
     }
 
     .contact-item:hover {
-        background-color: #c4d4e5;
+        background-color: #ebf0f4;
         /* Light gray background on hover */
+    }
+
+    form {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+    }
+
+    form input[type="text"] {
+        flex-grow: 1;
+        /* Ensures the input takes up available space */
+    }
+
+    form button {
+        white-space: nowrap;
     }
 </style>
 
@@ -190,13 +316,15 @@
         </script>
 
         <!-- Messaging Section -->
-        <div class="body flex-grow-1 px-3">
-            <div class="container-lg">
-                <div class="row">
+        <div class="body flex-grow-1 d-flex flex-column px-3">
+            <div class="container-lg flex-grow-1 d-flex">
+                <div class="row flex-grow-1 w-100">
                     <!-- Contact List -->
                     <div class="col-md-4">
-                        <div class="card">
-                            <div class="card-header bg-primary text-white">Contacts</div>
+                        <div class="card ">
+                            <div class="card-header bg-primary text-white">
+                                <h5>Contacts</h5>
+                            </div>
                             <ul class="list-group list-group-flush contact-list">
                                 {{#each contacts}}
                                 <a href="/message/{{this.username}}" class="text-decoration-none">
@@ -207,7 +335,6 @@
                                         </div>
                                         <div>
                                             <h5 class="mb-0">{{username}}</h5>
-                                            <small class="text-muted">{{lastMessageSnippet}}</small>
                                         </div>
                                     </div>
                                 </a>
@@ -217,59 +344,63 @@
                     </div>
 
                     <!-- Chat Section -->
-                    <div class="col-md-8">
-                        <div class="card">
-                            {{#if messages}}
-                            <div class="card-header bg-primary text-white" id="chat-header">
-                                {{contactUsername}}
-                            </div>
-                            <div class="body flex-grow-1 px-3 d-flex flex-column">
-                                <div class="container-lg d-flex flex-column flex-grow-1">
-                                    <div class="card chat-container flex-grow-1">
-                                        <div class="card-body chat-history" id="chat-history">
-                                            {{#each messages}}
-                                            <div
-                                                class="d-flex {{#if (eq this.senderUsername ../username)}}justify-content-end{{else}}justify-content-start{{/if}}">
-                                                <div
-                                                    class="message-bubble {{#if (eq this.senderUsername ../username)}}outgoing{{else}}incoming{{/if}}">
-                                                    <small class="text-muted">{{this.time}}</small>
-                                                    <div><strong>{{this.senderUsername}}</strong></div>
-                                                    <div>{{this.message}}</div>
-                                                </div>
-                                            </div>
-                                            {{/each}}
+                    <div class="col-md-8 d-flex flex-column">
+                        <div class="card h-100 d-flex flex-column">
+                            {{#if contactUsername}}
+                            <!-- Chat Section -->
+                            <div class="d-flex flex-column flex-grow-1">
+                                <!-- Chat Header -->
+                                <div class="card-header bg-primary text-white d-flex align-items-center">
+                                    <h5 class="mb-0">Your chat with {{contactUsername}}</h5>
+                                </div>
+
+                                <!-- Chat History -->
+                                <div class="card-body chat-history flex-grow-1">
+                                    {{#each messages}}
+                                    <div
+                                        class="d-flex {{#if (eq this.sender ../loggedInUsername)}}justify-content-end{{else}}justify-content-start{{/if}}">
+                                        <div
+                                            class="message-bubble {{#if (eq this.sender ../loggedInUsername)}}outgoing{{else}}incoming{{/if}} p-2 mb-2 rounded">
+                                            <div><strong>{{this.sender}}</strong></div>
+                                            <div>{{this.message}}</div>
+                                            <small style=" color:#59595c">Sent: {{this.time}}</small>
                                         </div>
                                     </div>
+                                    {{/each}}
+                                </div>
+
+                                <!-- Chat Input -->
+                                <div class="card-footer chat-input d-flex align-items-center">
+                                    <form method="post" , action="/message/{{contactUsername}}">
+                                        <input type="text" class="form-control me-2" id="message-input" name="message"
+                                            placeholder="Type a message...">
+                                        <button class="btn btn-primary" id="send-button" type="submit">Send</button>
+                                        <input type="hidden" name="contactUsername" value="{{contactUsername}}">
+                                        <input type="hidden" name="csrfToken" value="{{csrfToken}}">
+                                    </form>
                                 </div>
                             </div>
-                        </div>
-                        <div class="card-footer">
-                            <div class="input-group">
-                                <input type="text" class="form-control" id="message-input"
-                                    placeholder="Type a message..">
-                                <button class="btn btn-primary" id="send-button">Send</button>
-                                <input type="hidden" class="form-control" value="{{csrfToken}}">
+                            {{else}}
+                            <div class="card-header bg-primary text-white">
+                                <h5>Select a contact to start chatting</h5>
                             </div>
+                            <div class="card-body d-flex align-items-center justify-content-center">
+                                <p>Start a new conversation, or continue an existing one!</p>
+                            </div>
+                            {{/if}}
                         </div>
-                        {{else}}
-                        <div class="card-header bg-primary text-white" id="chat-header">
-                            Select a contact to start chatting
-                        </div>
-                        <div class="card-body">
-                            <p>No messages to display. Start a new conversation!</p>
-                        </div>
-                        {{/if}}
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <footer class="footer">
-        <div><a href="https://coreui.io">CoreUI </a><a href="https://coreui.io">Bootstrap Admin Template</a> © 2023
-            creativeLabs.</div>
-        <div class="ms-auto">Powered by&nbsp;<a href="https://coreui.io/docs/">CoreUI UI Components</a></div>
-    </footer>
+        <footer class="footer">
+            <div>
+                <a href="https://coreui.io">CoreUI</a> <a href="https://coreui.io">Bootstrap Admin Template</a> © 2023
+                creativeLabs.
+            </div>
+            <div class="ms-auto">Powered by&nbsp;<a href="https://coreui.io/docs/">CoreUI UI Components</a></div>
+        </footer>
     </div>
     <!-- CoreUI and necessary plugins-->
     <script src="/static/vendors/@coreui/coreui/js/coreui.bundle.min.js"></script>
@@ -279,32 +410,3 @@
 </body>
 
 </html>
-
-{{!-- <div class="card-header bg-primary text-white" id="chat-header">
-    {{contactUsername}}
-</div>
-<div class="card-body chat-history" id="chat-history">
-    {{#each message}}
-    <div
-        class="d-flex {{#if (eq senderUsername ../loggedInUsername)}}justify-content-end{{else}}justify-content-start{{/if}}">
-        <div class="message-bubble {{#if (eq senderUsername ../loggedInUsername)}}outgoing{{else}}incoming{{/if}}">
-            <small class="text-muted">{{this.time}}</small>
-            <div><strong>{{senderUsername}}</strong></div>
-            <div>{{this.message}}</div>
-        </div>
-    </div>
-    {{/each}}
-</div>
-<div class="card-footer">
-    <div class="input-group">
-        <input type="text" class="form-control" id="message-input" placeholder="Type a message..">
-        <button class="btn btn-primary" id="send-button">Send</button>
-    </div>
-</div>
-{{else}}
-<div class="card-header bg-primary text-white" id="chat-header">
-    Select a contact to start chatting
-</div>
-<div class="card-body">
-    <p>No messages to display. Start a new conversation!</p>
-</div> --}}

@@ -1,10 +1,10 @@
-// persistence layer
+// Persistence Layer
+
 // Indexes:
-// UserAccounts: the username, email and resetKey fields for optimized querying
-// SessionData: 
-// ChatHistory:
-// Badges: 
-// 
+// UserAccounts: username, email, resetKey
+// SessionData: sessionId expiry (TTL index, expires in 10 minutes)
+// ChatHistory: conversationId, user1, user2
+// Badges: badgeId
 
 const mongodb = require('mongodb')
 
@@ -13,6 +13,7 @@ let db = undefined
 let users = undefined
 let sessions = undefined
 let chats = undefined
+let badges = undefined
 
 // tehreem : mongodb+srv://tehreemmasroor:12class34@cluster0.1ykuj3l.mongodb.net/
 // manahil : mongodb+srv://60302181:12class34@cluster0.yrpo2.mongodb.net/?
@@ -25,12 +26,13 @@ let chats = undefined
  */
 async function connectDatabase() {
     if (!client) {
-        client = new mongodb.MongoClient('mongodb+srv://tehreemmasroor:12class34@cluster0.1ykuj3l.mongodb.net/')
+        client = new mongodb.MongoClient('mongodb+srv://60302181:12class34@cluster0.yrpo2.mongodb.net/?')
         await client.connect()
         db = client.db('LanguageExchange')
         users = db.collection('UserAccounts')
         sessions = db.collection('SessionData')
         chats = db.collection("ChatHistory")
+        badges = db.collection("Badges")
     }
 }
 
@@ -105,7 +107,7 @@ async function getUserByVerificationToken(token) {
  */
 async function updateUserEmailVerified(username) {
     await connectDatabase()
-    await users.updateOne({ username }, { $set: { emailVerified: true } })
+    await users.updateOne({ username }, { $set: { emailVerified: true, verificationToken: null } })
 }
 
 
@@ -174,6 +176,7 @@ async function updateSession(sessionKey, session) {
     if (!session) {
         throw new Error("Valid session data is required.")
     }
+
     const result = await sessions.updateOne(
         { key: sessionKey }, // Match the session by its key
         { $set: { csrfToken: session.csrfToken } } // Update the session data
@@ -297,6 +300,21 @@ async function getUserProfile(username) {
     }
 }
 
+async function getBlockedUsers(username) {
+    await connectDatabase();
+
+    let user = await users.findOne({ username })
+    return user.blockedUsers
+}
+
+async function blockUser(username, blockedUsers) {
+    await connectDatabase();
+
+    await users.updateOne({ username },
+        { $set: { blockedUsers: blockedUsers } })
+}
+
+
 async function getSuggestedContacts(learnLang, username) {
     await connectDatabase();
     return await users.find({
@@ -325,11 +343,6 @@ async function removeContact(username, contactUsername) {
         { username },
         { $pull: { contacts: contactUsername } } // Pull removes a matching element
     );
-
-    await users.updateOne(
-        { contactUsername },
-        { $addToSet: { contacts: username } } // Prevent duplicates
-    )
 }
 
 async function getBlockedUsers(username) {
@@ -346,7 +359,7 @@ async function blockUser(username, blockedUsers) {
         { username },
         { $set: { blockedUsers: blockedUsers } }
     )
-    
+
 }
 
 //Initiation of chat between users
@@ -377,8 +390,45 @@ async function updateMessages(conversationId, messageData) {
     await connectDatabase();
     await chats.updateOne({ conversationId },
         { $set: { messageData: messageData } })
+    let userDetails = await getUserDetails(messageData.senderId)
 
 }
+
+async function createNewBadge(badgeData) {
+    await connectDatabase()
+    await badges.insertOne(badgeData)
+}
+
+async function findAllUserConversations(username) {
+    await connectDatabase()
+    let userConversations = await chats.find({ $or: [
+        { user1: username }, 
+        { user2: username }
+    ]}).toArray()
+
+    return userConversations;
+}
+
+async function getUserBadges(username) {
+    await connectDatabase();
+    const user = await users.findOne({ username }, { badges: 1, _id: 0 });
+    return user ? user.badges : [];
+}
+
+async function getAllBadges() {
+    await connectDatabase()
+    return await badges.find().toArray()
+}
+
+async function assignBadgeToUser(username, badge) {
+    await connectDatabase();
+    await users.updateOne(
+        { username },
+        { $push: { badges: badge } },
+    )
+}
+
+
 
 // Exported Functions
 module.exports = {
@@ -406,5 +456,10 @@ module.exports = {
     createChat,
     getConversationIdByUsernames,
     getChat,
-    updateMessages
+    updateMessages,
+    createNewBadge,
+    getUserBadges,
+    getAllBadges,
+    assignBadgeToUser,
+    findAllUserConversations
 }

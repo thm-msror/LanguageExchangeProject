@@ -117,6 +117,7 @@
             /* Center the description text */
             color: black;
             font-weight: normal;
+            width: 45%;
         }
 
         .badge-description h6 {
@@ -275,20 +276,15 @@
                                     <div class="right-column">
                                         <h3>Badges Earned</h3>
                                         <div class="badges">
+                                            {{#each badges}}
                                             <div class="badge">
-                                                <img src="/static/assets/img/badges/badge1.jpg" alt="Badge 1">
+                                                <img src="{{this.photoPath}}" alt="{{this.title}}">
                                                 <div class="badge-description">
-                                                    <h6>Badge 1 Title</h6>
-                                                    <p>Badge 1 Description</p>
+                                                    <h6>{{this.title}}</h6>
+                                                    <p>{{this.description}}</p>
                                                 </div>
                                             </div>
-                                            <div class="badge">
-                                                <img src="/static/assets/img/badges/badge2.png" alt="Badge 2">
-                                                <div class="badge-description">
-                                                    <h6>Badge 2 Title</h6>
-                                                    <p>Badge 2 Description</p>
-                                                </div>
-                                            </div>
+                                            {{/each}}
                                         </div>
                                     </div>
                                 </div>

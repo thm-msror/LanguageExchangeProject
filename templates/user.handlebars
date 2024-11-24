@@ -71,9 +71,9 @@
     }
 
     .badge img {
-        width: 80px;
+        width: 60%;
         /* Adjust badge icon size */
-        height: 85px;
+        height: 65%;
         /* Adjust badge icon size */
         margin-bottom: 0.5rem;
         /* Space between icon and description */
@@ -84,12 +84,16 @@
         /* Center the description text */
         color: black;
         font-weight: normal;
+        max-width: 80%;
     }
+
     .badge-description h6 {
         text-align: center;
         /* Center the description text */
         color: black;
         font-weight: normal;
+        max-width: 80%;
+
     }
 </style>
 
@@ -186,7 +190,7 @@
                                     <use xlink:href="static/vendors/@coreui/icons/svg/free.svg#cil-envelope-open"></use>
                                 </svg> Messages
                             </a>
-                            
+
                             <div class="dropdown-divider"></div>
                             <a class="dropdown-item" href="/logout">
                                 <svg class="icon me-2">
@@ -231,14 +235,14 @@
                                     <div class="left-column">
                                         <h3>Languages</h3>
                                         <br>
-                                        <h4>Fluent in</h4>
+                                        <h5>Fluent in</h5>
                                         <ul>
                                             {{#each fluentLang}}
                                             <li>{{this}}</li>
                                             {{/each}}
                                         </ul>
                                         <br>
-                                        <h4>Learning</h4>
+                                        <h5>Learning</h5>
                                         <ul>
                                             {{#each learnLang}}
                                             <li>{{this}}</li>
@@ -248,20 +252,15 @@
                                     <div class="right-column">
                                         <h3>Badges Earned</h3>
                                         <div class="badges">
+                                            {{#each badges}}
                                             <div class="badge">
-                                                <img src="/static/assets/img/badges/badge1.jpg" alt="Badge 1">
+                                                <img src="{{this.photoPath}}" alt="{{this.title}}">
                                                 <div class="badge-description">
-                                                    <h6>Badge 1 Title</h6>
-                                                    <p>Badge 1 Description</p>
+                                                    <h6>{{this.title}}</h6>
+                                                    <p>{{this.description}}</p>
                                                 </div>
                                             </div>
-                                            <div class="badge">
-                                                <img src="/static/assets/img/badges/badge2.png" alt="Badge 2">
-                                                <div class="badge-description">
-                                                    <h6>Badge 2 Title</h6>
-                                                    <p>Badge 2 Description</p>
-                                                </div>
-                                            </div>
+                                            {{/each}}
                                         </div>
                                     </div>
                                 </div>

@@ -1,9 +1,10 @@
-//business layer
+//Business Layer
 const crypto = require('crypto')
 const persistence = require("./persistence")
 const mongodb = require('mongodb')
 
-
+const firstBadge = "Handshake!";
+const secondBadge = "Century!"
 /**
  * Hashes a password with a salt.
  * 
@@ -171,11 +172,13 @@ async function registerUser(username, email, password, repeatPassword) {
             username: username,
             email: email,
             passwordHash: passwordHash,
-            verificationToken: verificationToken
+            verificationToken: verificationToken,
+            contacts: [],
+            blockedUsers: [],
+            badges: []
         })
 
         await logVerificationEmail(email, verificationToken)
-
 
         return await persistence.getUserDetails(username)
     } catch (error) {
@@ -226,8 +229,7 @@ async function verifyEmailToken(token) {
  */
 async function updateUserEmailVerified(username) {
     await persistence.updateUserEmailVerified(username)
-    let userData = await persistence.getUserDetails(username);
-    delete userData.verificationToken
+    await persistence.getUserDetails(username);
 }
 
 
@@ -365,12 +367,12 @@ async function generateToken(key) {
         sd.csrfToken = token
         await persistence.updateSession(key, sd)
     } else {
-       throw new Error("Invalid Session key")
+        throw new Error("Invalid Session key")
     }
 }
 
 /**
- * Validates a CSRF token and deletes it.
+ * Validates a CSRF token.
  *
  * @param {string} sessionKey - The session key.
  * @param {string} csrfToken - The CSRF token.
@@ -397,13 +399,14 @@ async function cancelToken(key) {
     }
 }
 
-// Fetch potential contacts using persistence
+// Fetch suggesnted contacts using persistence
 async function getSuggestedContacts(username) {
     const userProfile = await persistence.getUserProfile(username)
     const suggestedContacts = await persistence.getSuggestedContacts(userProfile.learnLang, username)
     let temp = []
     for (contact of suggestedContacts) {
-        if (await isBlockedByUser(username, contact) === false) {
+        let blocked = await isBlockedByUser(username, contact);
+        if (!blocked) {
             temp.push(contact)
         }
     }
@@ -416,16 +419,31 @@ async function getCurrentContacts(username) {
 
 // Add contact using persistence
 async function addContact(username, contactUsername) {
+    // Decided on the business logic that everytime someone adds a user to their contacts, they 
+    // are also added to that user's contact list
+
     await persistence.addContact(username, contactUsername)
-    await createChat(username, contactUsername)
+    await persistence.addContact(contactUsername, username)
+
+    if (! await persistence.getConversationIdByUsernames(username, contactUsername)) {
+        await createChat(username, contactUsername)
+    }
+
 }
 
 // Remove contact using persistence
 async function removeContact(username, contactUsername) {
+    // Decided on the business logic that everytime someone removes a user from their contacts, they 
+    // are also removed from that user's contact list, but can still show up as a suggested contact
+
     await persistence.removeContact(username, contactUsername)
+    await persistence.removeContact(contactUsername, username)
+
 }
 
 async function blockUser(username, blockUsername) {
+    // Decided on the business logic that everytime someone blocks a user, they are removed from both
+    // their contact list and the blocked user's contact list, and also removed from the suggested contacts
     if (!username) {
         throw new Error("User ID is required.")
     }
@@ -435,23 +453,30 @@ async function blockUser(username, blockUsername) {
 
     let blockedUsers = await persistence.getBlockedUsers(username);
 
-    blockedUsers.push(blockUsername);
+    if (blockUsername in blockedUsers) {
+        throw new Error("User is already blocked")
+    } else {
+        blockedUsers.push(blockUsername);
+    }
 
     await persistence.blockUser(username, blockedUsers);
-    await persistence.removeContact(username, blockUsername)
+
+    await removeContact(username, blockUsername)
+    await removeContact(blockUsername, username)
 }
 
 async function isBlockedByUser(username, contact) {
-    let blockedUsers = await persistence.getBlockedUsers(username, contact)
+    let blockedUsers = await persistence.getBlockedUsers(username)
     if (!blockedUsers) {
         return true
     }
-    for (user in blockedUsers) {
-        if (contact === user ) {
+    for (let blockedUser of blockedUsers) {
+        if (blockedUser === contact.username) {
             return true
         }
     }
     return false
+
 }
 
 // Store a message sent by the current user
@@ -486,8 +511,8 @@ async function getChatHistory(conversationId) {
     if (!conversationId) {
         throw new Error("No conversation specified")
     }
-
-    return await persistence.getChat(conversationId);
+    let chatHistory = await persistence.getChat(conversationId)
+    return chatHistory.messageData;
 }
 
 // Store a message sent by the current user
@@ -496,16 +521,137 @@ async function updateMessages(conversationId, senderUsername, message) {
         throw new Error("No conversation specified")
     }
 
-    let chatHistory = await persistence.getChat(conversationId);
-    let newMessage = {
-        time: new Date(Date.now()),
-        message: message,
-        sender: senderUsername
+    if (!senderUsername) {
+        throw new Error("No sender specified")
     }
 
-    chatHistory.messageData.push(newMessage)
+    if (message !== "") {
+        let chatHistory = await getChatHistory(conversationId);
+        let currentDate = new Date(Date.now());
+        let newMessage = {
+            time: `${currentDate.getHours()}:${currentDate.getMinutes()}`,
+            message: message,
+            sender: senderUsername
+        }
 
-    return await persistence.updateMessages(conversationId, message)
+        chatHistory.push(newMessage)
+        await persistence.updateMessages(conversationId, chatHistory)
+
+        await handleBadges(senderUsername)
+    }
+}
+
+async function handleBadges(username) {
+    // Checking for Century badge
+    await handleCenturyBadge(username);
+    // Checking for Handshake badge
+    await handleHandshakeBadge(username);
+}
+
+async function handleHandshakeBadge(username) {
+    try {
+        const badges = await persistence.getUserBadges(username);
+
+        const alreadyEarned = badges.some(badge => badge.title === "Handshake!");
+        if (!alreadyEarned) {
+            const conversations = await persistence.findAllUserConversations(username);
+
+            // Initialize variables outside the loop
+            let hasSent = false;
+            let hasReceived = false;
+
+            // Loop through conversations
+            for (let conversation of conversations) {
+                if (Array.isArray(conversation.messageData)) {
+                    // Checking if the user has sent any messages in this conversation
+                    const messagesSent = conversation.messageData.filter(
+                        message => message.sender === username
+                    );
+                    if (messagesSent.length > 0) {
+                        hasSent = true;
+                    }
+
+                    // Checking if the user has received any messages in this conversation
+                    const messagesReceived = conversation.messageData.filter(
+                        message => message.sender !== username
+                    );
+                    if (messagesReceived.length > 0) {
+                        hasReceived = true;
+                    }
+                }
+
+                // If both conditions are met, no need to check further
+                if (hasSent && hasReceived) break;
+            }
+
+            // Only award the badge if both conditions have been met
+            if (hasSent && hasReceived) {
+                const newBadge = {
+                    title: "Handshake!",
+                    description: "Sent and received first message",
+                    photoPath: "/static/assets/img/badges/badge2.png",
+                    dateEarned: new Date().toISOString()
+                };
+
+                await persistence.assignBadgeToUser(username, newBadge);
+            }
+        }
+    } catch (error) {
+        console.error("Error handling Handshake badge:", error);
+        throw error;
+    }
+}
+
+async function handleCenturyBadge(username) {
+    try {
+        const badges = await getUserBadges(username);
+
+        const alreadyEarned = badges.some(badge => badge.title === "Century!");
+        if (!alreadyEarned) {
+            const conversations = await persistence.findAllUserConversations(username);
+            let totalMessages = 0;
+
+            conversations.forEach(conversation => {
+                if (Array.isArray(conversation.messageData)) {
+                    // Counting the number of messages sent by the user in this conversation
+                    totalMessages += conversation.messageData.filter(
+                        message => message.sender === username
+                    ).length;
+                }
+            });
+
+            if (totalMessages >= 100) {
+                const newBadge = {
+                    title: "Century!",
+                    description: "Sent 100 messages in total.",
+                    photoPath: "/static/assets/img/badges/badge1.png",
+                    dateEarned: new Date().toISOString()
+                };
+
+                await persistence.assignBadgeToUser(username, newBadge);
+            }
+        }
+    } catch (error) {
+        console.error("Error handling Century badge:", error);
+        throw error;
+    }
+}
+
+
+async function getUserBadges(username) {
+    if (!username) {
+        throw new Error("Username not specified");
+    }
+
+    return await persistence.getUserBadges(username)
+}
+
+async function createNewBadge(badgeData) {
+    if (badgeData) {
+        return await persistence.createNewBadge(badgeData)
+    }
+
+    throw new Error("Badge data not specified");
 }
 
 module.exports = {
@@ -533,5 +679,9 @@ module.exports = {
     createChat,
     getConversationIdByUsernames,
     getChatHistory,
-    updateMessages
+    updateMessages,
+    createNewBadge,
+    handleHandshakeBadge,
+    handleCenturyBadge,
+    getUserBadges
 }

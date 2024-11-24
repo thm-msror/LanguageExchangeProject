@@ -1,4 +1,4 @@
-//presentation layer
+//Presentation Layer
 const express = require('express')
 const business = require('./business.js')
 const bodyParser = require('body-parser')
@@ -58,8 +58,8 @@ async function isSessionExpired(sessionKey) {
 async function sessionExpirationMiddleware(req, res, next) {
     const sessionKey = req.cookies.sessionKey
     if (!sessionKey || await isSessionExpired(sessionKey)) {
-        res.cookie("sessionKey", "", { expires: new Date(Date.now()) }) // Clear expired session cookie
-        return res.redirect('/login') // Redirect to login page if session is expired
+        res.cookie("sessionKey", "", { expires: new Date(Date.now()) }) // Clear and expire session cookie
+        return res.render('login', {error: "Your session has expired"}) // Redirect to login page if session is expired
     }
     next()
 }
@@ -86,7 +86,18 @@ app.get('/', async (req, res) => {
     res.render('login', { message: message })
 })
 
-// Route to display user profile
+
+/**
+ * GET /user
+ * Render the user's profile page.
+ * - Middleware: `sessionExpirationMiddleware` validates the session.
+ * - CSRF token is generated and user details are fetched.
+ * 
+ * @async
+ * @param {Request} req - HTTP request with sessionKey in cookies.
+ * @param {Response} res - Renders user profile page.
+ * @throws {Error} If session, user profile, or badges cannot be loaded.
+ */
 app.get('/user', sessionExpirationMiddleware, async (req, res) => {
     try {
         const sessionKey = req.cookies.sessionKey
@@ -99,6 +110,7 @@ app.get('/user', sessionExpirationMiddleware, async (req, res) => {
         const username = session.sessionData.username
         const profile = await business.getUserProfile(username)
 
+        const badges = await business.getUserBadges(username);
         // Passing user details and CSRF token to the template
         res.render('user', {
             username,
@@ -107,6 +119,7 @@ app.get('/user', sessionExpirationMiddleware, async (req, res) => {
             fluentLang: profile.fluentLang,
             learnLang: profile.learnLang,
             profilePhotoPath: profile.profilePhotoPath || defaultProfilePhoto,
+            badges: badges
         })
     } catch (error) {
         console.error('Error loading user profile:', error)
@@ -114,6 +127,18 @@ app.get('/user', sessionExpirationMiddleware, async (req, res) => {
     }
 })
 
+
+/**
+ * POST /user
+ * Update the user's profile information.
+ * - Middleware: `sessionExpirationMiddleware` validates the session.
+ * - Handles profile photo upload and CSRF token validation.
+ * 
+ * @async
+ * @param {Request} req - HTTP request with form data, profile photo, and CSRF token.
+ * @param {Response} res - Redirects to GET /user after update.
+ * @throws {Error} If profile update or CSRF token validation fails.
+ */
 app.post('/user', sessionExpirationMiddleware, fileUpload(), async (req, res) => {
     try {
         const sessionKey = req.cookies.sessionKey
@@ -121,8 +146,10 @@ app.post('/user', sessionExpirationMiddleware, fileUpload(), async (req, res) =>
 
         const username = session.sessionData.username
         const profile = business.getUserProfile(username)
-        
+
         const csrfToken = req.body.csrfToken
+
+        const badges = await business.getUserBadges(username);
 
         // Validating the CSRF token
         const isValidToken = await business.validateToken(sessionKey, csrfToken)
@@ -164,6 +191,7 @@ app.post('/user', sessionExpirationMiddleware, fileUpload(), async (req, res) =>
                 fluentLang: profile.fluentLang,
                 learnLang: profile.learnLang,
                 profilePhotoPath: profile.profilePhotoPath || defaultProfilePhoto,
+                badges: badges
             })
         }
         if (!learnLang || learnLang.length < 1 || learnLang.length > 5) {
@@ -179,6 +207,7 @@ app.post('/user', sessionExpirationMiddleware, fileUpload(), async (req, res) =>
                 fluentLang: profile.fluentLang,
                 learnLang: profile.learnLang,
                 profilePhotoPath: profile.profilePhotoPath || defaultProfilePhoto,
+                badges: badges
             })
         }
 
@@ -212,7 +241,15 @@ app.post('/user', sessionExpirationMiddleware, fileUpload(), async (req, res) =>
 
 //Contact page functionality 
 
-// Route to render the contact page
+/**
+ * GET /contact
+ * Render the contact page for the logged-in user.
+ * - Middleware: `sessionExpirationMiddleware` validates the session.
+ * 
+ * @async
+ * @param {Request} req - HTTP request with sessionKey in cookies.
+ * @param {Response} res - Renders contact page with user profile data.
+ */
 app.get('/contact', sessionExpirationMiddleware, async (req, res) => {
     const sessionKey = req.cookies.sessionKey;
     const session = await business.getSession(sessionKey);
@@ -226,7 +263,17 @@ app.get('/contact', sessionExpirationMiddleware, async (req, res) => {
     res.render('contact', { profilePhotoPath: profile.profilePhotoPath || defaultProfilePhoto });
 });
 
-// Fetch suggested contacts
+
+/**
+ * GET /api/contacts/suggested
+ * Fetch suggested contacts for the logged-in user.
+ * - Middleware: `sessionExpirationMiddleware` validates the session.
+ * 
+ * @async
+ * @param {Request} req - HTTP request with sessionKey in cookies.
+ * @param {Response} res - Returns suggested contacts as JSON.
+ * @throws {Error} If fetching suggested contacts fails.
+ */
 app.get('/api/contacts/suggested', sessionExpirationMiddleware, async (req, res) => {
     try {
         const sessionKey = req.cookies.sessionKey;
@@ -245,7 +292,17 @@ app.get('/api/contacts/suggested', sessionExpirationMiddleware, async (req, res)
     }
 });
 
-// Add contact
+
+/**
+ * POST /api/contacts/add
+ * Add a new contact to the user's contact list.
+ * - Middleware: `sessionExpirationMiddleware` validates the session.
+ * 
+ * @async
+ * @param {Request} req - HTTP request with contactUsername in body.
+ * @param {Response} res - Sends 200 status if successful.
+ * @throws {Error} If adding the contact fails.
+ */
 app.post('/api/contacts/add', sessionExpirationMiddleware, async (req, res) => {
     try {
         const sessionKey = req.cookies.sessionKey;
@@ -264,7 +321,17 @@ app.post('/api/contacts/add', sessionExpirationMiddleware, async (req, res) => {
     }
 });
 
-// Fetch current contacts
+
+/**
+ * GET /api/contacts/current
+ * Fetch the current contacts of the logged-in user.
+ * - Middleware: `sessionExpirationMiddleware` validates the session.
+ * 
+ * @async
+ * @param {Request} req - HTTP request with sessionKey in cookies.
+ * @param {Response} res - Returns current contacts as JSON.
+ * @throws {Error} If fetching contacts fails.
+ */
 app.get('/api/contacts/current', sessionExpirationMiddleware, async (req, res) => {
     try {
         const sessionKey = req.cookies.sessionKey;
@@ -283,13 +350,24 @@ app.get('/api/contacts/current', sessionExpirationMiddleware, async (req, res) =
     }
 });
 
+
+/**
+ * GET /user/:contactUsername
+ * Render the profile page for a specified contact user, including the logged-in user's information and badges.
+ * 
+ * @async
+ * @param {Request} req - HTTP request object, containing the contact username as a route parameter.
+ * @param {Response} res - HTTP response object, renders the contact profile page or an error page.
+ * 
+ * @throws {Error} 500 - If an error occurs while fetching user profiles or badges.
+ */
 app.get('/user/:contactUsername', sessionExpirationMiddleware, async (req, res) => {
     try {
-        const contactUsername = req.params.contactUsername; // Get the contact username from the URL parameters
-        const sessionKey = req.cookies.sessionKey; // Get the session key from cookies
-        const session = await business.getSession(sessionKey); // Fetch the session from the business layer
+        const contactUsername = req.params.contactUsername; 
+        const sessionKey = req.cookies.sessionKey; 
+        const session = await business.getSession(sessionKey); 
 
-        const currentUsername = session.sessionData.username; // Get the current logged-in username
+        const currentUsername = session.sessionData.username;
 
         // Fetch the profile of the logged-in user
         const currentUserProfile = await business.getUserProfile(currentUsername);
@@ -302,13 +380,18 @@ app.get('/user/:contactUsername', sessionExpirationMiddleware, async (req, res) 
             return res.render('404', { error: "User  not found." });
         }
 
+
+        // Fetch the contact's current badges
+        const badges = await business.getUserBadges(contactUsername);
+
         // Render the user profile page with both the logged-in user's and the contact's information
         res.render('contactprofile', {
-            currentUsername, // Current logged-in user's username
-            currentUserProfile, // Current user's profile data
-            contactProfile, // Contact's profile data
-            contactUsername, // Contact's username
-            profilePhotoPath: currentUserProfile.profilePhotoPath || defaultProfilePhoto, // Default profile photo for current user
+            currentUsername, 
+            currentUserProfile, 
+            contactProfile, 
+            contactUsername, 
+            profilePhotoPath: currentUserProfile.profilePhotoPath || defaultProfilePhoto, 
+            badges: badges, 
         });
 
     } catch (error) {
@@ -317,11 +400,21 @@ app.get('/user/:contactUsername', sessionExpirationMiddleware, async (req, res) 
     }
 });
 
-// Remove contact
+
+/**
+ * DELETE /api/contacts/remove/:contactUsername
+ * Remove a contact from the user's contact list.
+ * - Middleware: `sessionExpirationMiddleware` validates the session.
+ * 
+ * @async
+ * @param {Request} req - HTTP request with contactUsername as a route parameter.
+ * @param {Response} res - Sends 200 status if successful.
+ * @throws {Error} If removing the contact fails.
+ */
 app.delete('/api/contacts/remove/:contactUsername', sessionExpirationMiddleware, async (req, res) => {
     try {
         const sessionKey = req.cookies.sessionKey;
-        const session = await business.getSession(sessionKey);
+        const session = await business.getSession(sessionKey);  1
 
         const username = session.sessionData.username;
         const { contactUsername } = req.params;
@@ -337,14 +430,24 @@ app.delete('/api/contacts/remove/:contactUsername', sessionExpirationMiddleware,
 });
 
 
-// Block contact
-app.delete('/api/contacts/block/:contactUsername', sessionExpirationMiddleware, async (req, res) => {
+
+/**
+ * POST /api/contacts/block/:contactUsername
+ * Block a contact for the logged-in user.
+ * - Middleware: `sessionExpirationMiddleware` validates the session.
+ * 
+ * @async
+ * @param {Request} req - HTTP request with contactUsername in body.
+ * @param {Response} res - Sends 200 status if successful.
+ * @throws {Error} If blocking the contact fails.
+ */
+app.post('/api/contacts/block/:contactUsername', sessionExpirationMiddleware, async (req, res) => {
     try {
         const sessionKey = req.cookies.sessionKey;
         const session = await business.getSession(sessionKey);
 
         const username = session.sessionData.username;
-        const { contactUsername } = req.params;
+        const contactUsername  = req.body.contactUsername;
 
         // block contact using the business layer
         await business.blockUser(username, contactUsername);
@@ -356,7 +459,17 @@ app.delete('/api/contacts/block/:contactUsername', sessionExpirationMiddleware, 
     }
 });
 
-// Route to render the message page
+
+/**
+ * GET /message
+ * Render the messaging page for the logged-in user.
+ * - Middleware: `sessionExpirationMiddleware` validates the session.
+ * 
+ * @async
+ * @param {Request} req - HTTP request with sessionKey in cookies.
+ * @param {Response} res - Renders the messaging page with contact list.
+ * @throws {Error} If the messaging page fails to load.
+ */
 app.get('/message', sessionExpirationMiddleware, async (req, res) => {
     try {
         const sessionKey = req.cookies.sessionKey
@@ -381,57 +494,91 @@ app.get('/message', sessionExpirationMiddleware, async (req, res) => {
 })
 
 
-app.get("/message/:contactUsername", async (req, res) => {
+/**
+ * GET /message/:contactUsername
+ * Render the chat page for a specific contact.
+ * - Middleware: `sessionExpirationMiddleware` validates the session.
+ * 
+ * @async
+ * @param {Request} req - HTTP request with contactUsername as a route parameter.
+ * @param {Response} res - Renders the chat page with chat history.
+ * @throws {Error} If the chat page fails to load.
+ */
+app.get("/message/:contactUsername", sessionExpirationMiddleware, async (req, res) => {
     try {
         const sessionKey = req.cookies.sessionKey
+        await business.generateToken(sessionKey)
         const session = await business.getSession(sessionKey)
 
         const username = session.sessionData.username
         const userProfile = await business.getUserProfile(username);
 
         const contact = req.params.contactUsername;
-
+        const contactProfile = await business.getUserProfile(contact)
 
         const conversationId = await business.getConversationIdByUsernames(username, contact);
-        //const chatHistory = await business.getChatHistory(conversationId)
+        const chatHistory = await business.getChatHistory(conversationId)
         const allContacts = await business.getCurrentContacts(username);
-        const chatHistory = [
-            { senderUsername: 'user1', time: '10:00 AM', message: 'Hello!' },
-            { senderUsername: 'user2', time: '10:05 AM', message: 'Hi there!' }
-        ]
 
         res.render("message", {
             profilePhotoPath: userProfile.profilePhotoPath || defaultProfilePhoto,
-            username: username,
+            loggedInUsername: username,
             contacts: allContacts,
             contactUsername: contact,
+            contactProfilePhotoPath: contactProfile.profilePhotoPath,
+            csrfToken: session.csrfToken,
             messages: chatHistory.length > 0 ? chatHistory : null,
         })
+
     } catch (error) {
         res.status(500).render('500', { error: 'Failed to load chat' });
     }
 })
 
 
-app.post("/message/:contactUsername", async (req, res) => {
-    const sessionKey = req.cookies.sessionKey
-    const session = await business.getSession(sessionKey)
+/**
+ * POST /message/:contactUsername
+ * Send a message to a specific contact.
+ * - Middleware: `sessionExpirationMiddleware` validates the session.
+ * - Validates and cancels CSRF token after use.
+ * 
+ * @async
+ * @param {Request} req - HTTP request with message data and CSRF token.
+ * @param {Response} res - Redirects to GET /message/:contactUsername after sending.
+ * @throws {Error} If sending the message or CSRF token validation fails.
+ */
+app.post("/message/:contactUsername", sessionExpirationMiddleware, async (req, res) => {
+    try {
+        const sessionKey = req.cookies.sessionKey
+        const session = await business.getSession(sessionKey)
 
-    const username = session.sessionData.username
-    const contact = req.params.contactUsername;
+        const username = session.sessionData.username
+        const contactUsername = req.params.contactUsername;
+        const csrfToken = req.body.csrfToken
+        const message = req.body.message;
 
+        const conversationId = await business.getConversationIdByUsernames(username, contactUsername);
 
+        // Validating the CSRF token
+        const isValidToken = await business.validateToken(sessionKey, csrfToken)
+        if (!isValidToken) {
+            return res.status(403).render('404', { error: 'Invalid CSRF token.' })
+        }
+        // Cancelling the CSRF token immediately after use
+        await business.cancelToken(sessionKey)
+
+        if (username && conversationId && message) {
+            await business.updateMessages(conversationId, username, message);
+        }
+
+        return res.redirect(`/message/${contactUsername}`)
+
+    } catch (error) {
+        console.log(error)
+        res.status(500).render('500', { error: 'Failed to send message' });
+    }
 })
 
-// Route to render the badge page
-app.get('/badge', sessionExpirationMiddleware, async (req, res) => {
-    const sessionKey = req.cookies.sessionKey
-    const session = await business.getSession(sessionKey)
-
-    const username = session.sessionData.username
-    const profile = await business.getUserProfile(username)
-    res.render('badge', { profilePhotoPath: profile.profilePhotoPath || defaultProfilePhoto })
-})
 
 /**
  * Route handler for rendering the registration page.
@@ -679,12 +826,27 @@ app.post('/reset-password', async (req, res) => {
 })
 
 
+/**
+ * GET /404
+ * Render the "404 Not Found" error page.
+ * 
+ * @async
+ * @param {Request} req - HTTP request object.
+ * @param {Response} res - Renders the 404 error page.
+ */
 app.get('/404', async (req, res) => {
     res.render('404')
 })
 
 
-
+/**
+ * GET /500
+ * Render the "500 Internal Server Error" page.
+ * 
+ * @async
+ * @param {Request} req - HTTP request object.
+ * @param {Response} res - Renders the 500 error page.
+ */
 app.get('/500', async (req, res) => {
     res.render('500')
 })
