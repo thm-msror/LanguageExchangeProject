@@ -300,21 +300,37 @@ async function getUserProfile(username) {
     }
 }
 
+/**
+ * Fetches a user's blocked users list.
+ * @param {string} username - Username of the user.
+ * @returns {Promise<Array<string>>} - List of blocked users.
+ */
 async function getBlockedUsers(username) {
     await connectDatabase();
-
-    let user = await users.findOne({ username })
-    return user.blockedUsers
+    let user = await users.findOne({ username });
+    return user.blockedUsers;
 }
 
+/**
+ * Blocks a user by updating the blocked users list.
+ * @param {string} username - Username of the user.
+ * @param {Array<string>} blockedUsers - Updated list of blocked users.
+ * @returns {Promise<void>}
+ */
 async function blockUser(username, blockedUsers) {
     await connectDatabase();
-
-    await users.updateOne({ username },
-        { $set: { blockedUsers: blockedUsers } })
+    await users.updateOne(
+        { username },
+        { $set: { blockedUsers: blockedUsers } }
+    );
 }
 
-
+/**
+ * Gets suggested contacts based on the language a user is learning.
+ * @param {Array<string>} learnLang - List of languages the user wants to learn.
+ * @param {string} username - Username of the current user.
+ * @returns {Promise<Array<Object>>} - List of suggested contacts.
+ */
 async function getSuggestedContacts(learnLang, username) {
     await connectDatabase();
     return await users.find({
@@ -323,12 +339,23 @@ async function getSuggestedContacts(learnLang, username) {
     }).toArray();
 }
 
+/**
+ * Fetches the current contacts of a user.
+ * @param {string} username - Username of the user.
+ * @returns {Promise<Array<Object>>} - List of current contacts.
+ */
 async function getCurrentContacts(username) {
     await connectDatabase();
     const user = await users.findOne({ username });
     return await users.find({ username: { $in: user.contacts || [] } }).toArray();
 }
 
+/**
+ * Adds a new contact to the user's contact list.
+ * @param {string} username - Username of the user.
+ * @param {string} contactUsername - Username of the contact to add.
+ * @returns {Promise<void>}
+ */
 async function addContact(username, contactUsername) {
     await connectDatabase();
     await users.updateOne(
@@ -337,6 +364,12 @@ async function addContact(username, contactUsername) {
     );
 }
 
+/**
+ * Removes a contact from the user's contact list.
+ * @param {string} username - Username of the user.
+ * @param {string} contactUsername - Username of the contact to remove.
+ * @returns {Promise<void>}
+ */
 async function removeContact(username, contactUsername) {
     await connectDatabase();
     await users.updateOne(
@@ -345,29 +378,22 @@ async function removeContact(username, contactUsername) {
     );
 }
 
-async function getBlockedUsers(username) {
-    await connectDatabase();
-
-    let user = await users.findOne({ username })
-    return user.blockedUsers
-}
-
-async function blockUser(username, blockedUsers) {
-    await connectDatabase();
-
-    await users.updateOne(
-        { username },
-        { $set: { blockedUsers: blockedUsers } }
-    )
-
-}
-
-//Initiation of chat between users
+/**
+ * Initiates a chat between two users.
+ * @param {Object} chatData - Chat data to insert.
+ * @returns {Promise<void>}
+ */
 async function createChat(chatData) {
     await connectDatabase();
     await chats.insertOne(chatData);
-    return
 }
+
+/**
+ * Retrieves the conversation ID between two users.
+ * @param {string} user1 - Username of the first user.
+ * @param {string} user2 - Username of the second user.
+ * @returns {Promise<Object|null>} - Chat document or null if not found.
+ */
 async function getConversationIdByUsernames(user1, user2) {
     await connectDatabase();
     return await chats.findOne({
@@ -375,57 +401,90 @@ async function getConversationIdByUsernames(user1, user2) {
             { user1: user1, user2: user2 },
             { user1: user2, user2: user1 }
         ]
-    })
+    });
 }
 
-//Get chat 
+/**
+ * Fetches chat history by conversation ID.
+ * @param {string} conversationId - Conversation ID of the chat.
+ * @returns {Promise<Object|null>} - Chat history or null if not found.
+ */
 async function getChat(conversationId) {
     await connectDatabase();
-    let chatHistory = await chats.findOne({ conversationId: conversationId });
-    return chatHistory;
+    return await chats.findOne({ conversationId: conversationId });
 }
 
-//update the chats
+/**
+ * Updates chat messages in a conversation.
+ * @param {string} conversationId - Conversation ID.
+ * @param {Object} messageData - New message data to update.
+ * @returns {Promise<void>}
+ */
 async function updateMessages(conversationId, messageData) {
     await connectDatabase();
-    await chats.updateOne({ conversationId },
-        { $set: { messageData: messageData } })
-    let userDetails = await getUserDetails(messageData.senderId)
-
+    await chats.updateOne(
+        { conversationId },
+        { $set: { messageData: messageData } }
+    );
 }
 
+/**
+ * Creates a new badge in the badges collection.
+ * @param {Object} badgeData - Badge data to insert.
+ * @returns {Promise<void>}
+ */
 async function createNewBadge(badgeData) {
-    await connectDatabase()
-    await badges.insertOne(badgeData)
+    await connectDatabase();
+    await badges.insertOne(badgeData);
 }
 
+/**
+ * Finds all conversations involving a specific user.
+ * @param {string} username - Username of the user.
+ * @returns {Promise<Array<Object>>} - List of conversations.
+ */
 async function findAllUserConversations(username) {
-    await connectDatabase()
-    let userConversations = await chats.find({ $or: [
-        { user1: username }, 
-        { user2: username }
-    ]}).toArray()
-
-    return userConversations;
+    await connectDatabase();
+    return await chats.find({
+        $or: [
+            { user1: username },
+            { user2: username }
+        ]
+    }).toArray();
 }
 
+/**
+ * Retrieves all badges earned by a specific user.
+ * @param {string} username - Username of the user.
+ * @returns {Promise<Array<Object>>} - List of badges.
+ */
 async function getUserBadges(username) {
     await connectDatabase();
     const user = await users.findOne({ username }, { badges: 1, _id: 0 });
     return user ? user.badges : [];
 }
 
+/**
+ * Fetches all available badges from the database.
+ * @returns {Promise<Array<Object>>} - List of all badges.
+ */
 async function getAllBadges() {
-    await connectDatabase()
-    return await badges.find().toArray()
+    await connectDatabase();
+    return await badges.find().toArray();
 }
 
+/**
+ * Assigns a new badge to a user.
+ * @param {string} username - Username of the user.
+ * @param {Object} badge - Badge to assign.
+ * @returns {Promise<void>}
+ */
 async function assignBadgeToUser(username, badge) {
     await connectDatabase();
     await users.updateOne(
         { username },
-        { $push: { badges: badge } },
-    )
+        { $push: { badges: badge } }
+    );
 }
 
 

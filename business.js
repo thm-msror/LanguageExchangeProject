@@ -398,203 +398,189 @@ async function cancelToken(key) {
         await persistence.updateSession(key, sd)
     }
 }
-
-// Fetch suggesnted contacts using persistence
+/**
+ * Fetches suggested contacts for a user based on their learning language.
+ * @param {string} username - Username of the current user.
+ * @returns {Promise<Array<Object>>} - List of suggested contacts not blocked by the user.
+ */
 async function getSuggestedContacts(username) {
-    const userProfile = await persistence.getUserProfile(username)
-    const suggestedContacts = await persistence.getSuggestedContacts(userProfile.learnLang, username)
-    let temp = []
-    for (contact of suggestedContacts) {
+    const userProfile = await persistence.getUserProfile(username);
+    const suggestedContacts = await persistence.getSuggestedContacts(userProfile.learnLang, username);
+    let temp = [];
+    for (const contact of suggestedContacts) {
         let blocked = await isBlockedByUser(username, contact);
         if (!blocked) {
-            temp.push(contact)
+            temp.push(contact);
         }
     }
-    return temp
+    return temp;
 }
-// Get current contacts
+
+/**
+ * Retrieves the current contacts of a user.
+ * @param {string} username - Username of the user.
+ * @returns {Promise<Array<Object>>} - List of current contacts.
+ */
 async function getCurrentContacts(username) {
-    return await persistence.getCurrentContacts(username)
+    return await persistence.getCurrentContacts(username);
 }
 
-// Add contact using persistence
+/**
+ * Adds a contact for a user, creating a mutual contact relationship.
+ * @param {string} username - Username of the user.
+ * @param {string} contactUsername - Username of the contact to add.
+ * @returns {Promise<void>}
+ */
 async function addContact(username, contactUsername) {
-    // Decided on the business logic that everytime someone adds a user to their contacts, they 
-    // are also added to that user's contact list
+    await persistence.addContact(username, contactUsername);
+    await persistence.addContact(contactUsername, username);
 
-    await persistence.addContact(username, contactUsername)
-    await persistence.addContact(contactUsername, username)
-
-    if (! await persistence.getConversationIdByUsernames(username, contactUsername)) {
-        await createChat(username, contactUsername)
+    if (!await persistence.getConversationIdByUsernames(username, contactUsername)) {
+        await createChat(username, contactUsername);
     }
-
 }
 
-// Remove contact using persistence
+/**
+ * Removes a contact from both the user's and the contact's contact lists.
+ * @param {string} username - Username of the user.
+ * @param {string} contactUsername - Username of the contact to remove.
+ * @returns {Promise<void>}
+ */
 async function removeContact(username, contactUsername) {
-    // Decided on the business logic that everytime someone removes a user from their contacts, they 
-    // are also removed from that user's contact list, but can still show up as a suggested contact
-
-    await persistence.removeContact(username, contactUsername)
-    await persistence.removeContact(contactUsername, username)
-
+    await persistence.removeContact(username, contactUsername);
+    await persistence.removeContact(contactUsername, username);
 }
 
+/**
+ * Blocks a user and removes them from both contact lists.
+ * @param {string} username - Username of the user.
+ * @param {string} blockUsername - Username of the user to block.
+ * @returns {Promise<void>}
+ */
 async function blockUser(username, blockUsername) {
-    // Decided on the business logic that everytime someone blocks a user, they are removed from both
-    // their contact list and the blocked user's contact list, and also removed from the suggested contacts
-    if (!username) {
-        throw new Error("User ID is required.")
-    }
-    if (!blockUsername) {
-        throw new Error("Must specify user to block")
-    }
-
+    if (!username || !blockUsername) throw new Error("User(s) not specified.");
     let blockedUsers = await persistence.getBlockedUsers(username);
 
-    if (blockUsername in blockedUsers) {
-        throw new Error("User is already blocked")
-    } else {
-        blockedUsers.push(blockUsername);
-    }
+    if (blockedUsers.includes(blockUsername)) throw new Error("User is already blocked.");
+    blockedUsers.push(blockUsername);
 
     await persistence.blockUser(username, blockedUsers);
-
-    await removeContact(username, blockUsername)
-    await removeContact(blockUsername, username)
+    await removeContact(username, blockUsername);
+    await removeContact(blockUsername, username);
 }
 
+/**
+ * Checks if a contact is blocked by the user.
+ * @param {string} username - Username of the user.
+ * @param {Object} contact - Contact object.
+ * @returns {Promise<boolean>} - True if the contact is blocked, otherwise false.
+ */
 async function isBlockedByUser(username, contact) {
-    let blockedUsers = await persistence.getBlockedUsers(username)
-    if (!blockedUsers) {
-        return true
-    }
-    for (let blockedUser of blockedUsers) {
-        if (blockedUser === contact.username) {
-            return true
-        }
-    }
-    return false
-
+    const blockedUsers = await persistence.getBlockedUsers(username);
+    return blockedUsers ? blockedUsers.includes(contact.username) : false;
 }
 
-// Store a message sent by the current user
+/**
+ * Creates a new chat between two users.
+ * @param {string} currentUser - Username of the first user.
+ * @param {string} contactUser - Username of the second user.
+ * @returns {Promise<void>}
+ */
 async function createChat(currentUser, contactUser) {
-    if (!currentUser || !contactUser) {
-        throw new Error("User(s) not specified");
-    }
-
-    let chatData = {
+    if (!currentUser || !contactUser) throw new Error("User(s) not specified.");
+    const chatData = {
         conversationId: crypto.randomUUID(),
         user1: currentUser,
         user2: contactUser,
         messageData: []
-    }
-
-    return await persistence.createChat(chatData);
+    };
+    await persistence.createChat(chatData);
 }
 
+/**
+ * Retrieves a conversation ID by the usernames of two users.
+ * @param {string} user1 - First username.
+ * @param {string} user2 - Second username.
+ * @returns {Promise<string>} - Conversation ID.
+ */
 async function getConversationIdByUsernames(user1, user2) {
-    if (!user1 || !user2) {
-        throw new Error("User(s) not specified")
-    }
-    let conversation = await persistence.getConversationIdByUsernames(user1, user2)
-    if (!conversation) {
-        throw new Error("Conversation not found")
-    }
-
-    return conversation.conversationId
+    if (!user1 || !user2) throw new Error("User(s) not specified.");
+    const conversation = await persistence.getConversationIdByUsernames(user1, user2);
+    if (!conversation) throw new Error("Conversation not found.");
+    return conversation.conversationId;
 }
 
+/**
+ * Retrieves chat history for a given conversation ID.
+ * @param {string} conversationId - Conversation ID.
+ * @returns {Promise<Array<Object>>} - Chat history (list of messages).
+ */
 async function getChatHistory(conversationId) {
-    if (!conversationId) {
-        throw new Error("No conversation specified")
-    }
-    let chatHistory = await persistence.getChat(conversationId)
+    if (!conversationId) throw new Error("No conversation specified.");
+    const chatHistory = await persistence.getChat(conversationId);
     return chatHistory.messageData;
 }
 
-// Store a message sent by the current user
+/**
+ * Updates messages in a chat conversation.
+ * @param {string} conversationId - Conversation ID.
+ * @param {string} senderUsername - Sender's username.
+ * @param {string} message - Message content.
+ * @returns {Promise<void>}
+ */
 async function updateMessages(conversationId, senderUsername, message) {
-    if (!conversationId) {
-        throw new Error("No conversation specified")
-    }
-
-    if (!senderUsername) {
-        throw new Error("No sender specified")
-    }
-
-    if (message !== "") {
-        let chatHistory = await getChatHistory(conversationId);
-        let currentDate = new Date(Date.now());
-        let newMessage = {
+    if (!conversationId || !senderUsername) throw new Error("Required parameters missing.");
+    if (message) {
+        const chatHistory = await getChatHistory(conversationId);
+        const currentDate = new Date();
+        const newMessage = {
             time: `${currentDate.getHours()}:${currentDate.getMinutes()}`,
             message: message,
             sender: senderUsername
-        }
-
-        chatHistory.push(newMessage)
-        await persistence.updateMessages(conversationId, chatHistory)
-
-        await handleBadges(senderUsername)
+        };
+        chatHistory.push(newMessage);
+        await persistence.updateMessages(conversationId, chatHistory);
+        await handleBadges(senderUsername);
     }
 }
 
+/**
+ * Handles badge awarding logic for a user.
+ * @param {string} username - Username of the user.
+ * @returns {Promise<void>}
+ */
 async function handleBadges(username) {
-    // Checking for Century badge
     await handleCenturyBadge(username);
-    // Checking for Handshake badge
     await handleHandshakeBadge(username);
 }
 
+/**
+ * Awards the Handshake badge if the user has sent and received messages.
+ * @param {string} username - Username of the user.
+ * @returns {Promise<void>}
+ */
 async function handleHandshakeBadge(username) {
     try {
         const badges = await persistence.getUserBadges(username);
+        if (badges.some(badge => badge.title === "Handshake!")) return;
 
-        const alreadyEarned = badges.some(badge => badge.title === "Handshake!");
-        if (!alreadyEarned) {
-            const conversations = await persistence.findAllUserConversations(username);
+        const conversations = await persistence.findAllUserConversations(username);
+        let hasSent = false, hasReceived = false;
 
-            // Initialize variables outside the loop
-            let hasSent = false;
-            let hasReceived = false;
+        for (const conversation of conversations) {
+            if (conversation.messageData.some(message => message.sender === username)) hasSent = true;
+            if (conversation.messageData.some(message => message.sender !== username)) hasReceived = true;
+            if (hasSent && hasReceived) break;
+        }
 
-            // Loop through conversations
-            for (let conversation of conversations) {
-                if (Array.isArray(conversation.messageData)) {
-                    // Checking if the user has sent any messages in this conversation
-                    const messagesSent = conversation.messageData.filter(
-                        message => message.sender === username
-                    );
-                    if (messagesSent.length > 0) {
-                        hasSent = true;
-                    }
-
-                    // Checking if the user has received any messages in this conversation
-                    const messagesReceived = conversation.messageData.filter(
-                        message => message.sender !== username
-                    );
-                    if (messagesReceived.length > 0) {
-                        hasReceived = true;
-                    }
-                }
-
-                // If both conditions are met, no need to check further
-                if (hasSent && hasReceived) break;
-            }
-
-            // Only award the badge if both conditions have been met
-            if (hasSent && hasReceived) {
-                const newBadge = {
-                    title: "Handshake!",
-                    description: "Sent and received first message",
-                    photoPath: "/static/assets/img/badges/badge2.png",
-                    dateEarned: new Date().toISOString()
-                };
-
-                await persistence.assignBadgeToUser(username, newBadge);
-            }
+        if (hasSent && hasReceived) {
+            const newBadge = {
+                title: "Handshake!",
+                description: "Sent and received first message.",
+                photoPath: "/static/assets/img/badges/badge2.png",
+                dateEarned: new Date().toISOString()
+            };
+            await persistence.assignBadgeToUser(username, newBadge);
         }
     } catch (error) {
         console.error("Error handling Handshake badge:", error);
@@ -602,34 +588,29 @@ async function handleHandshakeBadge(username) {
     }
 }
 
+/**
+ * Awards the Century badge if the user has sent 100 or more messages.
+ * @param {string} username - Username of the user.
+ * @returns {Promise<void>}
+ */
 async function handleCenturyBadge(username) {
     try {
         const badges = await getUserBadges(username);
+        if (badges.some(badge => badge.title === "Century!")) return;
 
-        const alreadyEarned = badges.some(badge => badge.title === "Century!");
-        if (!alreadyEarned) {
-            const conversations = await persistence.findAllUserConversations(username);
-            let totalMessages = 0;
+        const conversations = await persistence.findAllUserConversations(username);
+        const totalMessages = conversations.reduce((count, conversation) => {
+            return count + conversation.messageData.filter(message => message.sender === username).length;
+        }, 0);
 
-            conversations.forEach(conversation => {
-                if (Array.isArray(conversation.messageData)) {
-                    // Counting the number of messages sent by the user in this conversation
-                    totalMessages += conversation.messageData.filter(
-                        message => message.sender === username
-                    ).length;
-                }
-            });
-
-            if (totalMessages >= 100) {
-                const newBadge = {
-                    title: "Century!",
-                    description: "Sent 100 messages in total.",
-                    photoPath: "/static/assets/img/badges/badge1.png",
-                    dateEarned: new Date().toISOString()
-                };
-
-                await persistence.assignBadgeToUser(username, newBadge);
-            }
+        if (totalMessages >= 100) {
+            const newBadge = {
+                title: "Century!",
+                description: "Sent 100 messages in total.",
+                photoPath: "/static/assets/img/badges/badge1.png",
+                dateEarned: new Date().toISOString()
+            };
+            await persistence.assignBadgeToUser(username, newBadge);
         }
     } catch (error) {
         console.error("Error handling Century badge:", error);
@@ -637,21 +618,24 @@ async function handleCenturyBadge(username) {
     }
 }
 
-
+/**
+ * Fetches all badges earned by a user.
+ * @param {string} username - Username of the user.
+ * @returns {Promise<Array<Object>>} - List of earned badges.
+ */
 async function getUserBadges(username) {
-    if (!username) {
-        throw new Error("Username not specified");
-    }
-
-    return await persistence.getUserBadges(username)
+    if (!username) throw new Error("Username not specified.");
+    return await persistence.getUserBadges(username);
 }
 
+/**
+ * Creates a new badge.
+ * @param {Object} badgeData - Data for the new badge.
+ * @returns {Promise<void>}
+ */
 async function createNewBadge(badgeData) {
-    if (badgeData) {
-        return await persistence.createNewBadge(badgeData)
-    }
-
-    throw new Error("Badge data not specified");
+    if (!badgeData) throw new Error("Badge data not specified.");
+    await persistence.createNewBadge(badgeData);
 }
 
 module.exports = {
