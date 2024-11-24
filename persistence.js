@@ -1,10 +1,10 @@
 // Persistence Layer
 
 // Indexes:
-// UserAccounts: username, email, resetKey
-// SessionData: sessionId expiry (TTL index, expires in 10 minutes)
+// UserAccounts: username, email, contacts, learnLang, fluentLang
+// SessionData: key, sessionData.username, expiry, (TTL index, expires in 10 minutes)
 // ChatHistory: conversationId, user1, user2
-// Badges: badgeId
+// Badges: title
 
 const mongodb = require('mongodb')
 
