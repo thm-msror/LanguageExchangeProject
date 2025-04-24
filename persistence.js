@@ -26,7 +26,7 @@ let badges = undefined
  */
 async function connectDatabase() {
     if (!client) {
-        client = new mongodb.MongoClient('mongodb+srv://60302181:12class34@cluster0.yrpo2.mongodb.net/?')
+        client = new mongodb.MongoClient('mongodb+srv://tehreemmasroor:12class34@cluster0.1ykuj3l.mongodb.net/')
         await client.connect()
         db = client.db('LanguageExchange')
         users = db.collection('UserAccounts')
@@ -49,7 +49,7 @@ async function createUser(userData) {
     const { username, passwordHash, email, verificationToken } = userData
 
     // Insert user into the database with the verification token
-    await users.insertOne({ username, passwordHash, email, verificationToken, emailVerified: false, blockedUsers: [] })
+    await users.insertOne({ username, passwordHash, email, verificationToken, emailVerified: false, blockedUsers: [], badges: [] })
     return await users.findOne({ username })
 }
 

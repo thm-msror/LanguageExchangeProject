@@ -607,7 +607,7 @@ async function handleCenturyBadge(username) {
             const newBadge = {
                 title: "Century!",
                 description: "Sent 100 messages in total.",
-                photoPath: "/static/assets/img/badges/badge1.png",
+                photoPath: "/static/assets/img/badges/badge1.jpg",
                 dateEarned: new Date().toISOString()
             };
             await persistence.assignBadgeToUser(username, newBadge);
