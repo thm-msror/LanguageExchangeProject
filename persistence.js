@@ -1,4 +1,5 @@
 // Persistence Layer
+require('dotenv').config();
 
 // Indexes:
 // UserAccounts: username, email, contacts, learnLang, fluentLang
@@ -15,9 +16,6 @@ let sessions = undefined
 let chats = undefined
 let badges = undefined
 
-// tehreem : mongodb+srv://tehreemmasroor:12class34@cluster0.1ykuj3l.mongodb.net/
-// manahil : mongodb+srv://60302181:12class34@cluster0.yrpo2.mongodb.net/?
-
 /**
  * Connects to the MongoDB database and initializes the collections.
  * 
@@ -26,7 +24,7 @@ let badges = undefined
  */
 async function connectDatabase() {
     if (!client) {
-        client = new mongodb.MongoClient('mongodb+srv://tehreemmasroor:12class34@cluster0.1ykuj3l.mongodb.net/')
+        client = new mongodb.MongoClient(process.env.MONGO_URI);
         await client.connect()
         db = client.db('LanguageExchange')
         users = db.collection('UserAccounts')
