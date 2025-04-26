@@ -101,7 +101,9 @@ cd LanguageExchangeProject
 ```
 
 ### Install the dependencies
-`npm install`
+```bash
+npm install
+```
 
 ### Create a .env file in the root directory
 - Add the following line to .env: `MONGO_URI=mongodb+srv://<your-username>:<your-password>@cluster.mongodb.net/`
