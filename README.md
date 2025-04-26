@@ -1,4 +1,4 @@
-# 🌍 Language Exchange Platform
+# 🌍 Language Exchange Project
 
 This is a full-stack web application designed for language learners to connect with native speakers worldwide. It provides a secure and structured way for users to exchange messages, manage contacts, earn badges, and grow their language skills through interaction.
 
