@@ -18,5 +18,103 @@ This is a full-stack web application designed for language learners to connect w
 
 ## 🗂️ Directory Structure
 
-<pre> LanguageExchangeProject/ ├── .env # MongoDB connection string (DO NOT SHARE) ├── .gitignore # Prevents committing .env and node_modules ├── app.js # Entry point and route handling ├── business.js # Application logic layer ├── persistence.js # MongoDB access layer │ ├── static/ # Contains CoreUI CSS/JS/assets │ └── ... # CoreUI files │ ├── templates/ # Handlebars templates for HTML views │ └── ... # .hbs files │ ├── package.json # Project dependencies and scripts ├── package-lock.json # Auto-generated package version locking └── node_modules/ # Installed dependencies (auto-generated) </pre>
+LanguageExchangeProject/
+├── .env                             # MongoDB connection string (DO NOT SHARE)
+├── .gitignore                       # Ignores node_modules and .env
+├── app.js                           # Entry point and route definitions
+├── business.js                      # Application logic layer
+├── persistence.js                   # MongoDB database access layer
+├── package.json                     # Project dependencies and scripts
+├── package-lock.json                # Dependency lock file
+├── node_modules/                    # Installed packages (auto-generated)
+|
+├── static/                          # CoreUI assets (CSS, JS, images)
+│   ├── assets/
+│   ├── css/
+│   ├── icons/
+│   ├── js/
+│   ├── svg/
+│   └── vendors/
+|
+├── templates/                       # Handlebars view templates (.handlebars)
+│   ├── layouts/
+│   │   └── main.handlebars          # Master layout applied across all pages
+│   ├── register.handlebars
+│   ├── login.handlebars
+│   ├── forgot-password.handlebars
+│   ├── reset-password.handlebars
+│   ├── 404.handlebars
+│   ├── 500.handlebars
+│   ├── user.handlebars              # User profile and language setup
+│   ├── contact.handlebars           # View and manage contacts
+│   ├── contactprofile.handlebars    # Contact profile view
+│   ├── message.handlebars           # Messaging UI
+│   └── badge.handlebars             # Badge system UI
 
+## 🔄 User Flow
+
+1. **Registration**
+   - A new user signs up with a username, password, and email.
+   - A verification email is simulated by logging a unique verification link to the console.
+   - The user must "verify" their email via the link before logging in.
+
+2. **Login**
+   - Once verified, the user logs in using their credentials.
+   - A secure session is created and stored in the database.
+
+3. **Profile Setup**
+   - After login, the user is prompted to complete their profile.
+   - They can write a short description, upload a profile photo, select languages they are fluent in, and choose the languages they want to learn.
+
+4. **Finding Contacts**
+   - The system suggests users who are fluent in the language(s) the current user wants to learn.
+   - The user can add contacts from this list, view their profiles, or remove/block them.
+
+5. **Messaging**
+   - Users can send plain-text messages to contacts.
+   - Conversations are stored and can be viewed at any time.
+   - Users must refresh the page (or use optional JavaScript auto-refresh) to view new messages.
+
+6. **Badges**
+   - As users interact, they automatically earn badges:
+     - 🫱 Handshake! — First message sent and replied to.
+     - 💯 Century! — 100 total messages sent.
+   - Badges appear on their profile and are awarded dynamically based on message activity.
+
+7. **Password Reset**
+   - If a user forgets their password, they can request a reset link.
+   - A temporary reset link is logged to the console and expires in 2 minutes.
+
+8. **Security & Protection**
+   - CSRF tokens are used to secure forms.
+   - Users can block others, which removes them from contacts and prevents further interactions.
+
+
+## 🚀 Getting Started (Setup Instructions)
+
+Follow these steps to run the project locally on your machine:
+
+### 1. Clone the repository
+```bash
+git clone https://github.com/your-username/LanguageExchangeProject.git
+cd LanguageExchangeProject
+```
+
+### Install the dependencies
+`npm install`
+
+### Create a .env file in the root directory
+Add the following line to .env:
+`MONGO_URI=mongodb+srv://<your-username>:<your-password>@cluster.mongodb.net/`
+⚠️ Important: Replace the MongoDB URI with your own from MongoDB Atlas.
+
+### Start the application using node or nodemon
+- Use node : `node app.js`
+- Use nodemon: `nodemon app.js`
+
+### Simulated emails
+- Email verification and password reset links are logged to the terminal/console.
+- Click the links printed in the console to simulate email verification and password reset.
+
+## Default port 
+- The app runs locally at: http://localhost:8000
