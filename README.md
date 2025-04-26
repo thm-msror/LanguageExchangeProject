@@ -17,7 +17,7 @@ This is a full-stack web application designed for language learners to connect w
 - 📁 Fully layered backend: `app.js`, `business.js`, `persistence.js`
 
 ## 🗂️ Directory Structure
-
+```plaintext
 LanguageExchangeProject/
 ├── .env                             # MongoDB connection string (DO NOT SHARE)
 ├── .gitignore                       # Ignores node_modules and .env
@@ -50,7 +50,7 @@ LanguageExchangeProject/
 │   ├── contactprofile.handlebars    # Contact profile view
 │   ├── message.handlebars           # Messaging UI
 │   └── badge.handlebars             # Badge system UI
-
+```
 ## 🔄 User Flow
 
 1. **Registration**
@@ -104,9 +104,8 @@ cd LanguageExchangeProject
 `npm install`
 
 ### Create a .env file in the root directory
-Add the following line to .env:
-`MONGO_URI=mongodb+srv://<your-username>:<your-password>@cluster.mongodb.net/`
-⚠️ Important: Replace the MongoDB URI with your own from MongoDB Atlas.
+- Add the following line to .env: `MONGO_URI=mongodb+srv://<your-username>:<your-password>@cluster.mongodb.net/`
+- ⚠️ Important: Replace the MongoDB URI with your own from MongoDB Atlas.
 
 ### Start the application using node or nodemon
 - Use node : `node app.js`
