@@ -209,9 +209,11 @@ async function getUserByEmail(email) {
  * @param {Date} expiry - The expiration time for the reset key.
  * @returns {Promise<void>} Resolves once the reset key and expiry are set.
  */
-async function setResetKey(username, resetkey, expiry) {
-    await connectDatabase()
-    await users.updateOne({ username: username }, { $set: { resetkey: resetkey, resetKeyExpiry: expiry } })
+async function setResetKey(username, resetKey, expiry) {
+    await users.updateOne(
+        { username },
+        { $set: { resetKey, resetKeyExpiry: expiry } } // Field name: resetKey
+    );
 }
 
 
@@ -223,17 +225,11 @@ async function setResetKey(username, resetkey, expiry) {
  * @returns {Promise<Object|null>} The user document if found and the key is valid, otherwise null.
  */
 async function getUserByResetKey(resetKey) {
-    await connectDatabase()
-    const user = await users.findOne({ resetkey: resetKey })
-
+    const user = await users.findOne({ resetKey });
     if (!user) {
-        return null // No matching user
+        return null;
     }
-
-    if (user && user.resetKeyExpiry > new Date()) {
-        return user
-    }
-    return null
+    return user.resetKeyExpiry > new Date() ? user : null;
 }
 
 /**

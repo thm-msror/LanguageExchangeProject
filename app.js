@@ -6,6 +6,8 @@ const cookieParser = require('cookie-parser')
 const handlebars = require('express-handlebars')
 const fileUpload = require('express-fileupload')
 const defaultProfilePhoto = '/static/assets/img/avatars/default.png'
+require('dotenv').config()
+const BASE = process.env.BASE_URL || 'http://localhost:8000'
 
 let app = express()
 
@@ -602,19 +604,16 @@ app.get('/register', async (req, res) => {
  * @returns {Promise<void>} Redirects to login page after successful registration otherwise, renders registration page with an error message.
  */
 app.post('/register', async (req, res) => {
-    const username = req.body.username
-    const password = req.body.password
-    const repeatPassword = req.body.repeatPassword
-    const email = req.body.email
+    const { username, password, repeatPassword, email } = req.body;
 
     try {
-        await business.registerUser(username, email, password, repeatPassword)
-        res.render('login', { success: "Registration sucessful, A verification email has been sent to your email address. Please verify your email!" })  // Redirect to login page after successful registration
+        const { verificationToken } = await business.registerUser(username, email, password, repeatPassword);
+        const verificationLink = `${BASE}/verify-email?token=${verificationToken}`;
+        res.render('verify-link', { verificationLink });
     } catch (error) {
-        // Pass an error message to the template if registration fails
-        res.render('register', { error: error.message })
+        res.render('register', { error: error.message });
     }
-})
+});
 
 
 /**
@@ -698,26 +697,24 @@ app.get('/logout', async (req, res) => {
  * @returns {Promise<void>} Sends a status message based on verification success, failure, or errors.
  */
 app.get('/verify-email', async (req, res) => {
-    const token = req.query.token
-
-    if (!token) {
-        return res.render('404', { error: "Invalid verification token!" })
-    }
+    const token = req.query.token;
+    if (!token) return res.render('404', { error: "Invalid verification token!" });
 
     try {
-        // Check if the token is valid
-        const user = await business.verifyEmailToken(token)
-        if (user) {
-            // Mark the user's email as verified
-            await business.updateUserEmailVerified(user.username)
-            return res.send('<h2>Email verified successfully. You can close this page now.</h2>')
-        } else {
-            return res.render('404', { error: "Invalid verification token! You can try again!" })
-        }
+        const user = await business.verifyEmailToken(token);
+        if (!user) return res.render('404', { error: "Invalid token!" });
+        
+        await business.updateUserEmailVerified(user.username);
+        
+        // CORRECTED: Use getUserProfile instead of getUserDetails
+        const updatedUser = await business.getUserProfile(user.username);
+        
+        res.render('verification-success');
     } catch (error) {
-        return res.render('500', { error: "Internal Server error! Please try again!" })
+        console.error('Verification error:', error);
+        res.render('500', { error: "Internal error. Please try again." });
     }
-})
+});
 
 /**
  * Renders the "Forgot Password" page for users to initiate password reset.
@@ -740,20 +737,19 @@ app.get('/forgot-password', (req, res) => {
  * @returns {void} Sends a message to the user based on the result of the password reset initiation.
  */
 app.post('/forgot-password', async (req, res) => {
-    const email = req.body.email
-
-    // Initiate password reset and log reset link
-    verified = await business.initiatePasswordReset(email)
-
-    if (!verified) {
-        return res.render('forgot-password', {
-            error: "This email address does not exist or has not been verified."
-        })
+    const email = req.body.email;
+    const result = await business.initiatePasswordReset(email);
+    
+    if (!result) {
+        return res.render('forgot-password', { 
+            error: "This email address does not exist or has not been verified." 
+        });
     }
 
-    // Notify the user to check their email for a reset link
-    return res.render('forgot-password', { success: "A reset link will be sent shortly...Close this window!" })
-})
+    // Use result.resetKey (now an object)
+    const resetLink = `${BASE}/reset-password/${result.resetKey}`;
+    return res.render('reset-link', { resetLink });
+});
 
 /**
  * Verifies the password reset key and renders the reset page.

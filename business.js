@@ -155,18 +155,24 @@ async function validatePassword(pass1, pass2) {
  */
 async function registerUser(username, email, password, repeatPassword) {
     try {
-        const existingUser = await persistence.getUserDetails(username)
+        const existingUser = await persistence.getUserDetails(username);
         if (existingUser) {
-            throw new Error("Username already exists.")
+            throw new Error("Username already exists.");
         }
 
-        const passwordMatch = await validatePassword(password, repeatPassword)
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            throw new Error("Invalid email format. Use something like name@example.com.");
+        }
+
+        const passwordMatch = await validatePassword(password, repeatPassword);
         if (!passwordMatch) {
-            throw new Error("Both passwords do no match.")
+            throw new Error("Both passwords do not match."); // Fixed typo in error message
         }
 
-        const passwordHash = hashPassword(password)
-        const verificationToken = generateVerificationToken()
+        const passwordHash = hashPassword(password);
+        const verificationToken = generateVerificationToken();
 
         await persistence.createUser({
             username: username,
@@ -176,31 +182,24 @@ async function registerUser(username, email, password, repeatPassword) {
             contacts: [],
             blockedUsers: [],
             badges: []
-        })
+        });
 
-        await logVerificationEmail(email, verificationToken)
-
-        return await persistence.getUserDetails(username)
+        await sendVerificationToken(verificationToken);
+        return await persistence.getUserDetails(username);
     } catch (error) {
-        throw error
+        throw error;
     }
 }
 
-
 /**
- * Simulates sending a verification email by logging the verification link to the console.
+ * Simulates sending a verification link
  * 
  * @async
- * @param {string} email - The email address to send the verification to.
  * @param {string} token - The verification token.
  * @returns {Promise<void>} Logs the verification email to the console.
  */
-async function logVerificationEmail(email, token) {
-    const verificationLink = `http://localhost:8000/verify-email?token=${token}`  // The verification link
-
-    console.log(`\n[Email Sent to ${email}]\n`)
-    console.log(`Please verify your email by clicking on the following link:`)
-    console.log(`${verificationLink}\n`)
+async function sendVerificationToken(token) {
+    return token
 }
 
 
@@ -241,20 +240,17 @@ async function updateUserEmailVerified(username) {
  * @returns {Promise<boolean>} `true` if the password reset email is successfully sent, otherwise `false`.
  */
 async function initiatePasswordReset(email) {
-    const user = await persistence.getUserByEmail(email)
+    const user = await persistence.getUserByEmail(email);
+
     if (!user || !user.emailVerified) {
-        return false
+        return false;
     }
 
-    const resetKey = crypto.randomUUID()
-    let resetExpiry = new Date(Date.now() + 2 * 60 * 1000)
-    await persistence.setResetKey(user.username, resetKey, resetExpiry)
+    const resetKey = crypto.randomUUID();
+    const resetExpiry = new Date(Date.now() + 2 * 60 * 1000); // 2 minutes
+    await persistence.setResetKey(user.username, resetKey, resetExpiry);
 
-    // Simulate sending an email by logging to the console
-    console.log(`Email sent to ${email}`)
-    console.log(`Subject: Password Reset`)
-    console.log(`Message: Click the following link to reset your password: http://127.0.0.1:8000/reset-password/${resetKey}`)
-    return true
+    return {resetKey}; // Return the reset key for testing purposes
 }
 
 
@@ -643,7 +639,7 @@ module.exports = {
     loginUser,
     verifyEmailToken,
     updateUserEmailVerified,
-    logVerificationEmail,
+    sendVerificationToken,
     getSession,
     initiatePasswordReset,
     verifyResetKey,

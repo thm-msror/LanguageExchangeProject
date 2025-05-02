@@ -40,9 +40,12 @@ LanguageExchangeProject/
 │   ├── layouts/
 │   │   └── main.handlebars          # Master layout applied across all pages
 │   ├── register.handlebars
+|   ├── verify-link.handlebars
+|   ├── verification-success.handlebars
 │   ├── login.handlebars
 │   ├── forgot-password.handlebars
 │   ├── reset-password.handlebars
+│   ├── reset-link.handlebars
 │   ├── 404.handlebars
 │   ├── 500.handlebars
 │   ├── user.handlebars              # User profile and language setup
@@ -54,9 +57,9 @@ LanguageExchangeProject/
 ## 🔄 User Flow
 
 1. **Registration**
-   - A new user signs up with a username, password, and email.
-   - A verification email is simulated by logging a unique verification link to the console.
-   - The user must "verify" their email via the link before logging in.
+   - A new user signs up with a username, password, and email.=
+   - After registration, click the verification link shown on the page
+   - Successful verification redirects to login page
 
 2. **Login**
    - Once verified, the user logs in using their credentials.
@@ -83,7 +86,8 @@ LanguageExchangeProject/
 
 7. **Password Reset**
    - If a user forgets their password, they can request a reset link.
-   - A temporary reset link is logged to the console and expires in 2 minutes.
+   - Use the reset link displayed on the page within 2 minutes
+   - Passwords must be different from previous ones
 
 8. **Security & Protection**
    - CSRF tokens are used to secure forms.
@@ -106,16 +110,12 @@ npm install
 ```
 
 ### Create a .env file in the root directory
-- Add the following line to .env: `MONGO_URI=mongodb+srv://<your-username>:<your-password>@cluster.mongodb.net/`
+- Add the following line to .env: `MONGO_URI=mongodb+srv:/<your-username>:<your-password>@cluster.mongodb.net/`
 - ⚠️ Important: Replace the MongoDB URI with your own from MongoDB Atlas.
 
 ### Start the application using node or nodemon
 - Use node : `node app.js`
 - Use nodemon: `nodemon app.js`
-
-### Simulated emails
-- Email verification and password reset links are logged to the terminal/console.
-- Click the links printed in the console to simulate email verification and password reset.
 
 ## Default port 
 - The app runs locally at: http://localhost:8000
