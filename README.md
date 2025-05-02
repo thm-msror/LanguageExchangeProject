@@ -120,8 +120,6 @@ npm install
 ## Default port 
 - The app runs locally at: http://localhost:8000
 
----
-
 ## 🌐 Optional: Try the Deployed App
 You can optionally explore the platform on a live deployment hosted using Render:
 
@@ -129,4 +127,3 @@ You can optionally explore the platform on a live deployment hosted using Render
 
 ⚠️ Please note:
 The site may not be running 24/7. Since the backend connects to a private MongoDB instance and Render uses free-tier hosting, the server sleeps when inactive and may take time to start when first visited. If it's not responding, try again in a minute.
----
